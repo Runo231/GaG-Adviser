@@ -323,15 +323,15 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>üå± Grow a Garden Stock Monitor</h1>
+            <h1>?? Grow a Garden Stock Monitor</h1>
             <div class="last-update" id="lastUpdate">Cargando...</div>
         </div>
 
         <div class="controls">
-            <h3>‚ö†Ô∏è Configurar Alertas</h3>
+            <h3>?? Configurar Alertas</h3>
             <div class="alert-input">
                 <input type="text" id="alertInput" placeholder="Nombre del item para alertar (ej: Common Egg)">
-                <button class="btn btn-primary" onclick="addAlert()">A√±adir Alerta</button>
+                <button class="btn btn-primary" onclick="addAlert()">A?adir Alerta</button>
                 <button class="btn btn-danger" onclick="clearAllAlerts()">Limpiar Todo</button>
             </div>
             
@@ -357,7 +357,7 @@
         let merchantAlertEnabled = true;
         let lastData = null;
 
-        // Cargar configuraci√≥n guardada
+        // Cargar configuraci®Æn guardada
         function loadSettings() {
             const savedAlerts = sessionStorage.getItem('gardenAlerts');
             if (savedAlerts) {
@@ -373,13 +373,13 @@
             updateAlertsList();
         }
 
-        // Guardar configuraci√≥n
+        // Guardar configuraci®Æn
         function saveSettings() {
             sessionStorage.setItem('gardenAlerts', JSON.stringify(alerts));
             sessionStorage.setItem('merchantAlert', JSON.stringify(merchantAlertEnabled));
         }
 
-        // A√±adir alerta
+        // A?adir alerta
         function addAlert() {
             const input = document.getElementById('alertInput');
             const alertName = input.value.trim();
@@ -452,7 +452,7 @@
             if (merchantAlertEnabled && data.travelingmerchant && data.travelingmerchant.status !== 'leaved') {
                 if (!lastData || !lastData.travelingmerchant || lastData.travelingmerchant.status === 'leaved') {
                     alertTriggered = true;
-                    console.log('¬°Traveling Merchant ha aparecido!');
+                    console.log('?Traveling Merchant ha aparecido!');
                 }
             }
             
@@ -463,7 +463,7 @@
                         const itemNameLower = item.name.toLowerCase();
                         if (alerts.some(alert => itemNameLower.includes(alert))) {
                             alertTriggered = true;
-                            console.log(`¬°Item encontrado: ${item.name}!`);
+                            console.log(`?Item encontrado: ${item.name}!`);
                         }
                     });
                 }
@@ -479,15 +479,107 @@
             try {
                 document.getElementById('error').style.display = 'none';
                 
-                const response = await fetch('https://gagstock.gleeze.com/grow-a-garden');
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                // Lista de proxies CORS para intentar
+        // Obtener datos de la API con m®≤ltiples m®¶todos fallback
+        async function fetchData() {
+            try {
+                document.getElementById('error').style.display = 'none';
+                
+                const originalUrl = 'https://gagstock.gleeze.com/grow-a-garden';
+                let result = null;
+                
+                // M®¶todo 1: Intentar conexi®Æn directa con diferentes configuraciones
+                const directMethods = [
+                    // Sin configuraciones especiales
+                    () => fetch(originalUrl),
+                    // Con headers espec®™ficos
+                    () => fetch(originalUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        cache: 'no-cache'
+                    })
+                ];
+                
+                for (const method of directMethods) {
+                    try {
+                        const response = await method();
+                        if (response.ok) {
+                            result = await response.json();
+                            console.log('Conexi®Æn directa exitosa');
+                            break;
+                        }
+                    } catch (error) {
+                        console.log('M®¶todo directo fall®Æ:', error.message);
+                    }
                 }
                 
-                const result = await response.json();
+                // M®¶todo 2: Proxies CORS p®≤blicos
+                if (!result) {
+                    const proxies = [
+                        'https://api.allorigins.win/get?url=',
+                        'https://corsproxy.io/?',
+                        'https://cors-anywhere.herokuapp.com/',
+                        'https://proxy.cors.sh/',
+                        'https://api.codetabs.com/v1/proxy?quest='
+                    ];
+                    
+                    for (const proxy of proxies) {
+                        try {
+                            let proxyUrl;
+                            let response;
+                            
+                            if (proxy.includes('allorigins.win')) {
+                                proxyUrl = proxy + encodeURIComponent(originalUrl);
+                                response = await fetch(proxyUrl);
+                                if (response.ok) {
+                                    const data = await response.json();
+                                    result = JSON.parse(data.contents);
+                                }
+                            } else {
+                                proxyUrl = proxy + encodeURIComponent(originalUrl);
+                                response = await fetch(proxyUrl, {
+                                    method: 'GET',
+                                    headers: {
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                    }
+                                });
+                                if (response.ok) {
+                                    result = await response.json();
+                                }
+                            }
+                            
+                            if (result) {
+                                console.log(`Conexi®Æn exitosa usando proxy: ${proxy}`);
+                                break;
+                            }
+                        } catch (error) {
+                            console.log(`Proxy ${proxy} fall®Æ:`, error.message);
+                        }
+                    }
+                }
+                
+                // M®¶todo 3: Usar un servidor proxy personalizado (como ®≤ltimo recurso)
+                if (!result) {
+                    try {
+                        const response = await fetch(`https://thingproxy.freeboard.io/fetch/${originalUrl}`);
+                        if (response.ok) {
+                            result = await response.json();
+                            console.log('Conexi®Æn exitosa usando thingproxy');
+                        }
+                    } catch (error) {
+                        console.log('Thingproxy fall®Æ:', error.message);
+                    }
+                }
+                
+                if (!result) {
+                    throw new Error('No se pudo conectar con ning®≤n m®¶todo. Verifica tu conexi®Æn a internet.');
+                }
                 
                 if (result.status !== 'success') {
-                    throw new Error('API returned non-success status');
+                    throw new Error('La API devolvi®Æ un estado no exitoso');
                 }
                 
                 // Verificar alertas antes de actualizar lastData
@@ -500,14 +592,32 @@
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('lastUpdate').textContent = 
-                    `√öltima actualizaci√≥n: ${new Date(result.updated_at).toLocaleString('es-ES')}`;
+                    `®≤ltima actualizaci®Æn: ${new Date(result.updated_at).toLocaleString('es-ES')}`;
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('error').style.display = 'block';
-                document.getElementById('error').textContent = 
-                    `Error al cargar los datos: ${error.message}. Reintentando...`;
+                
+                let errorMessage = 'Error al cargar los datos. ';
+                
+                if (error.message.includes('CORS') || error.message.includes('cors') || 
+                    error.message.includes('Cross-Origin') || error.message.includes('fetch')) {
+                    errorMessage += 'Problema de CORS detectado. Intentando m®¶todos alternativos... ';
+                } else if (error.message.includes('NetworkError') || error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Error de conexi®Æn. Verifica tu internet. ';
+                } else {
+                    errorMessage += error.message + '. ';
+                }
+                
+                errorMessage += 'Reintentando en el pr®Æximo ciclo...';
+                
+                document.getElementById('error').innerHTML = `
+                    <div>${errorMessage}</div>
+                    <div style="margin-top: 10px; font-size: 0.9rem; opacity: 0.8;">
+                        ?? Consejo: Si persiste el error, intenta acceder desde GitHub Pages o actualizar la p®¢gina.
+                    </div>
+                `;
             }
         }
 
@@ -534,7 +644,7 @@
                 let categoryHTML = `
                     <div class="category-header">
                         <h2 class="category-title">${categoryTitle}</h2>
-                        ${category.countdown ? `<div class="countdown">‚è∞ ${category.countdown}</div>` : ''}
+                        ${category.countdown ? `<div class="countdown">? ${category.countdown}</div>` : ''}
                     </div>
                 `;
                 
@@ -543,7 +653,7 @@
                     const statusClass = category.status === 'leaved' ? 'inactive' : 'active';
                     const statusText = category.status === 'leaved' ? 
                         `Ausente - Aparece en: ${category.appearIn}` : 
-                        `¬°Disponible! - ${category.merchantName}`;
+                        `?Disponible! - ${category.merchantName}`;
                     
                     categoryHTML += `<div class="merchant-status ${statusClass}">${statusText}</div>`;
                 }
@@ -563,7 +673,7 @@
                                     <div class="item-name">${item.name}</div>
                                     <div class="item-quantity">Cantidad: ${item.quantity}</div>
                                 </div>
-                                ${isHighlighted ? '<div style="color: #ff6b6b; font-weight: bold;">‚ö†Ô∏è</div>' : ''}
+                                ${isHighlighted ? '<div style="color: #ff6b6b; font-weight: bold;">??</div>' : ''}
                             </div>
                         `;
                     });
@@ -578,13 +688,13 @@
             });
         }
 
-        // Calcular pr√≥ximo momento de llamada (m√∫ltiplos de 5 + 30s)
+        // Calcular pr®Æximo momento de llamada (m®≤ltiplos de 5 + 30s)
         function getNextCallTime() {
             const now = new Date();
             const minutes = now.getMinutes();
             const seconds = now.getSeconds();
             
-            // Encontrar el pr√≥ximo m√∫ltiplo de 5
+            // Encontrar el pr®Æximo m®≤ltiplo de 5
             const nextMultiple = Math.ceil(minutes / 5) * 5;
             const nextCallMinute = nextMultiple % 60;
             
@@ -593,19 +703,19 @@
                 nextCall.setHours(nextCall.getHours() + 1);
             }
             nextCall.setMinutes(nextCallMinute);
-            nextCall.setSeconds(30); // 30 segundos despu√©s
+            nextCall.setSeconds(30); // 30 segundos despu®¶s
             nextCall.setMilliseconds(0);
             
             return nextCall;
         }
 
-        // Programar pr√≥xima llamada
+        // Programar pr®Æxima llamada
         function scheduleNextCall() {
             const nextCall = getNextCallTime();
             const now = new Date();
             const delay = nextCall.getTime() - now.getTime();
             
-            console.log(`Pr√≥xima llamada programada para: ${nextCall.toLocaleTimeString('es-ES')}`);
+            console.log(`Pr®Æxima llamada programada para: ${nextCall.toLocaleTimeString('es-ES')}`);
             
             setTimeout(() => {
                 fetchData();
@@ -629,7 +739,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadSettings();
             fetchData(); // Llamada inicial
-            scheduleNextCall(); // Programar llamadas autom√°ticas
+            scheduleNextCall(); // Programar llamadas autom®¢ticas
         });
     </script>
 </body>

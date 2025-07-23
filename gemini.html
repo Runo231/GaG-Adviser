@@ -152,7 +152,12 @@
             const notificationSound = new Tone.Synth().toDestination();
 
             // --- STATE & CONFIG ---
-            const API_URL = 'https://gagstock.gleeze.com/grow-a-garden';
+            // We use a CORS proxy to bypass browser security restrictions (CORS policy).
+            // This allows the script to work when hosted on services like GitHub Pages.
+            const PROXY_URL = 'https://corsproxy.io/?'; // Using a more reliable proxy
+            const API_ENDPOINT = 'https://gagstock.gleeze.com/grow-a-garden';
+            const API_URL = `${PROXY_URL}${encodeURIComponent(API_ENDPOINT)}`;
+            
             let alerts = JSON.parse(localStorage.getItem('gardenAlerts')) || [];
             let notifyForMerchant = localStorage.getItem('notifyForMerchant') === 'true';
 
@@ -291,7 +296,7 @@
              * Fetches data from the API and updates the UI.
              */
             async function fetchData() {
-                console.log(`[${new Date().toLocaleTimeString()}] Fetching data...`);
+                console.log(`[${new Date().toLocaleTimeString()}] Fetching data via proxy...`);
                 loadingSpinner.style.display = 'block';
                 contentGrid.style.display = 'none';
                 statusDot.classList.remove('status-ok', 'status-error');
@@ -299,8 +304,9 @@
                 try {
                     const response = await fetch(API_URL);
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        throw new Error(`Proxy or API error! status: ${response.status}`);
                     }
+                    // The new proxy allows direct JSON parsing
                     const result = await response.json();
                     
                     if (result.status === 'success' && result.data) {
@@ -312,12 +318,12 @@
                     }
 
                 } catch (error) {
-                    console.error("Failed to fetch data:", error);
+                    console.error("Failed to fetch or parse data:", error);
                     lastUpdatedElement.textContent = `Error al actualizar: ${error.message}`;
                     statusDot.classList.add('status-error');
                     contentGrid.innerHTML = `<div class="col-span-full text-center p-10 bg-red-50 rounded-lg">
                         <h3 class="text-xl font-bold text-red-700">¡Oops! Algo salió mal</h3>
-                        <p class="text-red-600 mt-2">No se pudieron cargar los datos. Se intentará de nuevo automáticamente.</p>
+                        <p class="text-red-600 mt-2">No se pudieron cargar los datos. Revisa la consola para más detalles. Se intentará de nuevo automáticamente.</p>
                     </div>`;
                 } finally {
                     loadingSpinner.style.display = 'none';
@@ -331,8 +337,7 @@
             function scheduleNextFetch() {
                 const now = new Date();
                 const currentMinutes = now.getMinutes();
-                const currentSeconds = now.getSeconds();
-
+                
                 // Calculate minutes to the next 5-minute mark (0, 5, 10, ...)
                 const minutesUntilNextInterval = 5 - (currentMinutes % 5);
                 
@@ -340,8 +345,7 @@
                 const nextFetchTime = new Date(now.getTime());
                 nextFetchTime.setMinutes(now.getMinutes() + minutesUntilNextInterval, 30, 0);
 
-                // If the calculated time is in the past (e.g., at xx:04:50, next is xx:05:30)
-                // but if we are at xx:05:40, the next should be xx:10:30.
+                // If the calculated time is in the past, schedule for the next interval
                 if (nextFetchTime <= now) {
                     nextFetchTime.setMinutes(nextFetchTime.getMinutes() + 5);
                 }
