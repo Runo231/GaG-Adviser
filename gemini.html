@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grow a Garden - Stock Tracker</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts for a friendly UI -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tone.js for sound notifications -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+    <style>
+        /* Custom styles for a more polished look */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0fdf4; /* Light green background */
+            color: #1f2937;
+        }
+        .header {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 700;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+        .category-title {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            color: #166534; /* Dark green */
+            border-bottom: 2px solid #dcfce7;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1rem;
+            text-transform: capitalize;
+        }
+        .item-alert {
+            background-color: #fefce8; /* Light yellow for alert */
+            border-left: 4px solid #facc15; /* Yellow border */
+            animation: pulse-bg 2s infinite;
+        }
+        @keyframes pulse-bg {
+            0% { background-color: #fefce8; }
+            50% { background-color: #fde68a; }
+            100% { background-color: #fefce8; }
+        }
+        .btn {
+            transition: background-color 0.2s, transform 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: blink 1.5s infinite;
+        }
+        .status-ok { background-color: #22c55e; } /* Green */
+        .status-error { background-color: #ef4444; } /* Red */
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Audio element for notification sound -->
+    <audio id="notification-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-green-800 header">Grow a Garden Tracker</h1>
+            <p class="text-gray-500 mt-2">Stock actualizado en tiempo real con alertas personalizadas.</p>
+            <div id="status-container" class="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-600">
+                <span id="status-dot" class="status-dot status-ok"></span>
+                <span id="last-updated">Esperando la primera actualización...</span>
+            </div>
+        </header>
+
+        <!-- Alerts Configuration -->
+        <div class="card p-6 mb-8 max-w-4xl mx-auto">
+            <h2 class="text-2xl category-title">Configuración de Alertas</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Add new alert -->
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">Añadir Alerta de Objeto</h3>
+                    <form id="add-alert-form" class="flex items-center space-x-2">
+                        <input type="text" id="alert-item-name" placeholder="Ej: Mythical Egg" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition" required>
+                        <button type="submit" class="btn bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Añadir</button>
+                    </form>
+                    <div class="mt-4 flex items-center">
+                        <input type="checkbox" id="traveling-merchant-alert" class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500">
+                        <label for="traveling-merchant-alert" class="ml-2 text-gray-700">Avisarme si aparece el Mercader Ambulante</label>
+                    </div>
+                </div>
+                <!-- Current alerts list -->
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">Alertas Activas</h3>
+                    <ul id="alerts-list" class="space-y-2 h-32 overflow-y-auto pr-2">
+                        <!-- Alerts will be dynamically added here -->
+                        <li class="text-gray-500">No hay alertas activas.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading-spinner" class="text-center py-10">
+            <svg class="animate-spin h-10 w-10 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-2 text-gray-600">Buscando datos frescos...</p>
+        </div>
+
+        <!-- Main content grid -->
+        <main id="content-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Categories will be dynamically injected here -->
+        </main>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM ELEMENTS ---
+            const contentGrid = document.getElementById('content-grid');
+            const lastUpdatedElement = document.getElementById('last-updated');
+            const statusDot = document.getElementById('status-dot');
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const addAlertForm = document.getElementById('add-alert-form');
+            const alertItemNameInput = document.getElementById('alert-item-name');
+            const alertsList = document.getElementById('alerts-list');
+            const merchantAlertCheckbox = document.getElementById('traveling-merchant-alert');
+            const notificationSound = new Tone.Synth().toDestination();
+
+            // --- STATE & CONFIG ---
+            const API_URL = 'https://gagstock.gleeze.com/grow-a-garden';
+            let alerts = JSON.parse(localStorage.getItem('gardenAlerts')) || [];
+            let notifyForMerchant = localStorage.getItem('notifyForMerchant') === 'true';
+
+            // --- FUNCTIONS ---
+
+            /**
+             * Plays a notification sound.
+             */
+            function playNotificationSound() {
+                // Play a C4 note for 0.5 seconds
+                Tone.start(); // Required to start audio context in some browsers
+                notificationSound.triggerAttackRelease("C5", "8n");
+            }
+
+            /**
+             * Renders the list of active alerts.
+             */
+            function renderAlerts() {
+                alertsList.innerHTML = '';
+                if (alerts.length === 0) {
+                    alertsList.innerHTML = '<li class="text-gray-500">No hay alertas activas.</li>';
+                    return;
+                }
+                alerts.forEach(alertItem => {
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center bg-gray-100 p-2 rounded-md';
+                    li.textContent = alertItem;
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.innerHTML = '&times;';
+                    deleteBtn.className = 'font-bold text-red-500 hover:text-red-700 text-xl leading-none px-2';
+                    deleteBtn.onclick = () => removeAlert(alertItem);
+                    li.appendChild(deleteBtn);
+                    alertsList.appendChild(li);
+                });
+            }
+            
+            /**
+             * Saves alerts to localStorage.
+             */
+            function saveAlerts() {
+                localStorage.setItem('gardenAlerts', JSON.stringify(alerts));
+            }
+
+            /**
+             * Adds a new alert item.
+             * @param {string} itemName - The name of the item to add.
+             */
+            function addAlert(itemName) {
+                const normalizedItem = itemName.trim().toLowerCase();
+                if (normalizedItem && !alerts.map(a => a.toLowerCase()).includes(normalizedItem)) {
+                    alerts.push(itemName.trim());
+                    saveAlerts();
+                    renderAlerts();
+                }
+                alertItemNameInput.value = '';
+            }
+
+            /**
+             * Removes an alert item.
+             * @param {string} itemName - The name of the item to remove.
+             */
+            function removeAlert(itemName) {
+                alerts = alerts.filter(item => item.toLowerCase() !== itemName.toLowerCase());
+                saveAlerts();
+                renderAlerts();
+            }
+
+            /**
+             * Renders the data from the API onto the page.
+             * @param {object} apiData - The data object from the API.
+             */
+            function renderData(apiData) {
+                contentGrid.innerHTML = '';
+                let notificationTriggered = false;
+                const lowerCaseAlerts = alerts.map(a => a.toLowerCase());
+
+                for (const category in apiData) {
+                    if (!apiData[category].items || !Array.isArray(apiData[category].items)) {
+                        continue;
+                    }
+
+                    // Special handling for the Traveling Merchant
+                    if (category === 'travelingmerchant') {
+                        if (apiData[category].status === 'leaved') {
+                            continue; // Skip if the merchant has left
+                        }
+                        if (notifyForMerchant) {
+                            notificationTriggered = true; // Trigger sound if it appears
+                        }
+                    }
+
+                    const categoryCard = document.createElement('div');
+                    categoryCard.className = 'card p-6';
+                    
+                    let itemsHtml = `<h3 class="category-title text-xl mb-4">${category.replace(/_/g, ' ')}</h3><ul class="space-y-3">`;
+
+                    apiData[category].items.forEach(item => {
+                        const isAlerted = lowerCaseAlerts.includes(item.name.toLowerCase());
+                        if (isAlerted) {
+                            notificationTriggered = true;
+                        }
+                        const alertClass = isAlerted ? 'item-alert' : 'bg-white';
+                        
+                        itemsHtml += `
+                            <li class="flex items-center justify-between p-2 rounded-lg transition ${alertClass}">
+                                <div class="flex items-center">
+                                    <span class="text-2xl mr-3">${item.emoji}</span>
+                                    <span class="font-medium text-gray-800">${item.name}</span>
+                                </div>
+                                <span class="font-bold text-green-700 bg-green-100 px-3 py-1 rounded-full text-sm">${item.quantity}</span>
+                            </li>
+                        `;
+                    });
+
+                    itemsHtml += '</ul>';
+                    
+                    // Add countdown timer if it exists
+                    if (apiData[category].countdown) {
+                         itemsHtml += `<p class="text-sm text-gray-500 mt-4 text-center">Reinicia en: <span class="font-semibold">${apiData[category].countdown}</span></p>`;
+                    }
+                    if (apiData[category].appearIn) {
+                         itemsHtml += `<p class="text-sm text-gray-500 mt-4 text-center">Aparece en: <span class="font-semibold">${apiData[category].appearIn}</span></p>`;
+                    }
+
+
+                    categoryCard.innerHTML = itemsHtml;
+                    contentGrid.appendChild(categoryCard);
+                }
+
+                if (notificationTriggered) {
+                    playNotificationSound();
+                }
+            }
+
+            /**
+             * Fetches data from the API and updates the UI.
+             */
+            async function fetchData() {
+                console.log(`[${new Date().toLocaleTimeString()}] Fetching data...`);
+                loadingSpinner.style.display = 'block';
+                contentGrid.style.display = 'none';
+                statusDot.classList.remove('status-ok', 'status-error');
+
+                try {
+                    const response = await fetch(API_URL);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const result = await response.json();
+                    
+                    if (result.status === 'success' && result.data) {
+                        renderData(result.data);
+                        lastUpdatedElement.textContent = `Última actualización: ${new Date().toLocaleTimeString()}`;
+                        statusDot.classList.add('status-ok');
+                    } else {
+                        throw new Error('API response format is not as expected.');
+                    }
+
+                } catch (error) {
+                    console.error("Failed to fetch data:", error);
+                    lastUpdatedElement.textContent = `Error al actualizar: ${error.message}`;
+                    statusDot.classList.add('status-error');
+                    contentGrid.innerHTML = `<div class="col-span-full text-center p-10 bg-red-50 rounded-lg">
+                        <h3 class="text-xl font-bold text-red-700">¡Oops! Algo salió mal</h3>
+                        <p class="text-red-600 mt-2">No se pudieron cargar los datos. Se intentará de nuevo automáticamente.</p>
+                    </div>`;
+                } finally {
+                    loadingSpinner.style.display = 'none';
+                    contentGrid.style.display = 'grid';
+                }
+            }
+
+            /**
+             * Calculates the delay until the next fetch time and schedules it.
+             */
+            function scheduleNextFetch() {
+                const now = new Date();
+                const currentMinutes = now.getMinutes();
+                const currentSeconds = now.getSeconds();
+
+                // Calculate minutes to the next 5-minute mark (0, 5, 10, ...)
+                const minutesUntilNextInterval = 5 - (currentMinutes % 5);
+                
+                // Set target time to the next interval + 30 seconds for data availability
+                const nextFetchTime = new Date(now.getTime());
+                nextFetchTime.setMinutes(now.getMinutes() + minutesUntilNextInterval, 30, 0);
+
+                // If the calculated time is in the past (e.g., at xx:04:50, next is xx:05:30)
+                // but if we are at xx:05:40, the next should be xx:10:30.
+                if (nextFetchTime <= now) {
+                    nextFetchTime.setMinutes(nextFetchTime.getMinutes() + 5);
+                }
+
+                const delay = nextFetchTime - now;
+                
+                console.log(`Next fetch scheduled at ${nextFetchTime.toLocaleTimeString()} (in ${Math.round(delay/1000)}s)`);
+                lastUpdatedElement.textContent = `Próxima actualización a las ${nextFetchTime.toLocaleTimeString()}`;
+
+                setTimeout(() => {
+                    fetchData();
+                    // Reschedule the next one after the fetch is complete
+                    scheduleNextFetch();
+                }, delay);
+            }
+
+            // --- INITIALIZATION ---
+
+            // Setup event listeners for alerts
+            addAlertForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                addAlert(alertItemNameInput.value);
+            });
+
+            merchantAlertCheckbox.checked = notifyForMerchant;
+            merchantAlertCheckbox.addEventListener('change', (e) => {
+                notifyForMerchant = e.target.checked;
+                localStorage.setItem('notifyForMerchant', notifyForMerchant);
+            });
+
+            // Initial render of alerts from localStorage
+            renderAlerts();
+
+            // Start the fetch cycle
+            fetchData(); // Fetch immediately on load
+            scheduleNextFetch(); // Then schedule the next fetches
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grow a Garden - Stock Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .last-update {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .controls h3 {
+            margin-bottom: 15px;
+            color: #444;
+        }
+
+        .alert-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .alert-input input {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .alert-input input:focus {
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ff5252);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .merchant-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .merchant-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #667eea;
+        }
+
+        .alerts-list {
+            margin-top: 15px;
+        }
+
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 15px;
+            margin: 5px 0;
+            background: #f8f9fa;
+            border-radius: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+        }
+
+        .category {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .category:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+        }
+
+        .category.hidden {
+            display: none;
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .category-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #444;
+            text-transform: capitalize;
+        }
+
+        .countdown {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .items {
+            display: grid;
+            gap: 12px;
+        }
+
+        .item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+
+        .item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .item.highlighted {
+            background: linear-gradient(45deg, #ffd700, #ffed4e);
+            border-left-color: #ff6b6b;
+            animation: pulse 2s infinite;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.02);
+            }
+        }
+
+        .item-emoji {
+            font-size: 1.8rem;
+            margin-right: 15px;
+            min-width: 40px;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #444;
+            font-size: 1.1rem;
+            margin-bottom: 2px;
+        }
+
+        .item-quantity {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .merchant-status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 15px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .merchant-status.active {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .merchant-status.inactive {
+            background: linear-gradient(45deg, #dc3545, #fd7e14);
+            color: white;
+        }
+
+        .error-message {
+            background: linear-gradient(45deg, #dc3545, #fd7e14);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .categories {
+                grid-template-columns: 1fr;
+            }
+            
+            .alert-input {
+                flex-direction: column;
+            }
+            
+            .alert-input input {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌱 Grow a Garden Stock Monitor</h1>
+            <div class="last-update" id="lastUpdate">Cargando...</div>
+        </div>
+
+        <div class="controls">
+            <h3>⚠️ Configurar Alertas</h3>
+            <div class="alert-input">
+                <input type="text" id="alertInput" placeholder="Nombre del item para alertar (ej: Common Egg)">
+                <button class="btn btn-primary" onclick="addAlert()">Añadir Alerta</button>
+                <button class="btn btn-danger" onclick="clearAllAlerts()">Limpiar Todo</button>
+            </div>
+            
+            <div class="merchant-toggle">
+                <input type="checkbox" id="merchantAlert" checked>
+                <label for="merchantAlert">Alertar cuando aparezca el Traveling Merchant</label>
+            </div>
+
+            <div class="alerts-list" id="alertsList"></div>
+        </div>
+
+        <div id="loading" class="loading">
+            Cargando datos del stock...
+        </div>
+
+        <div id="error" class="error-message" style="display: none;"></div>
+
+        <div id="categories" class="categories"></div>
+    </div>
+
+    <script>
+        let alerts = [];
+        let merchantAlertEnabled = true;
+        let lastData = null;
+
+        // Cargar configuración guardada
+        function loadSettings() {
+            const savedAlerts = sessionStorage.getItem('gardenAlerts');
+            if (savedAlerts) {
+                alerts = JSON.parse(savedAlerts);
+            }
+            
+            const savedMerchantAlert = sessionStorage.getItem('merchantAlert');
+            if (savedMerchantAlert !== null) {
+                merchantAlertEnabled = JSON.parse(savedMerchantAlert);
+                document.getElementById('merchantAlert').checked = merchantAlertEnabled;
+            }
+            
+            updateAlertsList();
+        }
+
+        // Guardar configuración
+        function saveSettings() {
+            sessionStorage.setItem('gardenAlerts', JSON.stringify(alerts));
+            sessionStorage.setItem('merchantAlert', JSON.stringify(merchantAlertEnabled));
+        }
+
+        // Añadir alerta
+        function addAlert() {
+            const input = document.getElementById('alertInput');
+            const alertName = input.value.trim();
+            
+            if (alertName && !alerts.includes(alertName.toLowerCase())) {
+                alerts.push(alertName.toLowerCase());
+                input.value = '';
+                updateAlertsList();
+                saveSettings();
+            }
+        }
+
+        // Eliminar alerta
+        function removeAlert(alertName) {
+            alerts = alerts.filter(alert => alert !== alertName.toLowerCase());
+            updateAlertsList();
+            saveSettings();
+        }
+
+        // Limpiar todas las alertas
+        function clearAllAlerts() {
+            alerts = [];
+            updateAlertsList();
+            saveSettings();
+        }
+
+        // Actualizar lista de alertas
+        function updateAlertsList() {
+            const alertsList = document.getElementById('alertsList');
+            
+            if (alerts.length === 0) {
+                alertsList.innerHTML = '<p style="color: #666; font-style: italic;">No hay alertas configuradas</p>';
+                return;
+            }
+            
+            alertsList.innerHTML = alerts.map(alert => `
+                <div class="alert-item">
+                    <span>${alert}</span>
+                    <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="removeAlert('${alert}')">Eliminar</button>
+                </div>
+            `).join('');
+        }
+
+        // Reproducir sonido de alerta
+        function playAlertSound() {
+            // Crear un sonido de alerta usando Web Audio API
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+
+        // Verificar alertas
+        function checkAlerts(data) {
+            let alertTriggered = false;
+            
+            // Verificar traveling merchant
+            if (merchantAlertEnabled && data.travelingmerchant && data.travelingmerchant.status !== 'leaved') {
+                if (!lastData || !lastData.travelingmerchant || lastData.travelingmerchant.status === 'leaved') {
+                    alertTriggered = true;
+                    console.log('¡Traveling Merchant ha aparecido!');
+                }
+            }
+            
+            // Verificar items en alertas
+            Object.keys(data).forEach(category => {
+                if (data[category].items) {
+                    data[category].items.forEach(item => {
+                        const itemNameLower = item.name.toLowerCase();
+                        if (alerts.some(alert => itemNameLower.includes(alert))) {
+                            alertTriggered = true;
+                            console.log(`¡Item encontrado: ${item.name}!`);
+                        }
+                    });
+                }
+            });
+            
+            if (alertTriggered) {
+                playAlertSound();
+            }
+        }
+
+        // Obtener datos de la API
+        async function fetchData() {
+            try {
+                document.getElementById('error').style.display = 'none';
+                
+                const response = await fetch('https://gagstock.gleeze.com/grow-a-garden');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.status !== 'success') {
+                    throw new Error('API returned non-success status');
+                }
+                
+                // Verificar alertas antes de actualizar lastData
+                if (lastData) {
+                    checkAlerts(result.data);
+                }
+                
+                lastData = result.data;
+                displayData(result.data);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('lastUpdate').textContent = 
+                    `Última actualización: ${new Date(result.updated_at).toLocaleString('es-ES')}`;
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 
+                    `Error al cargar los datos: ${error.message}. Reintentando...`;
+            }
+        }
+
+        // Mostrar datos
+        function displayData(data) {
+            const categoriesContainer = document.getElementById('categories');
+            categoriesContainer.innerHTML = '';
+            
+            Object.keys(data).forEach(categoryKey => {
+                if (categoryKey === 'updated_at') return;
+                
+                const category = data[categoryKey];
+                
+                // Ocultar traveling merchant si status es 'leaved'
+                if (categoryKey === 'travelingmerchant' && category.status === 'leaved') {
+                    return;
+                }
+                
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'category';
+                
+                const categoryTitle = categoryKey === 'travelingmerchant' ? 'Traveling Merchant' : categoryKey;
+                
+                let categoryHTML = `
+                    <div class="category-header">
+                        <h2 class="category-title">${categoryTitle}</h2>
+                        ${category.countdown ? `<div class="countdown">⏰ ${category.countdown}</div>` : ''}
+                    </div>
+                `;
+                
+                // Mostrar estado del merchant si es traveling merchant
+                if (categoryKey === 'travelingmerchant') {
+                    const statusClass = category.status === 'leaved' ? 'inactive' : 'active';
+                    const statusText = category.status === 'leaved' ? 
+                        `Ausente - Aparece en: ${category.appearIn}` : 
+                        `¡Disponible! - ${category.merchantName}`;
+                    
+                    categoryHTML += `<div class="merchant-status ${statusClass}">${statusText}</div>`;
+                }
+                
+                if (category.items && category.items.length > 0) {
+                    categoryHTML += '<div class="items">';
+                    
+                    category.items.forEach(item => {
+                        const isHighlighted = alerts.some(alert => 
+                            item.name.toLowerCase().includes(alert)
+                        );
+                        
+                        categoryHTML += `
+                            <div class="item ${isHighlighted ? 'highlighted' : ''}">
+                                <div class="item-emoji">${item.emoji}</div>
+                                <div class="item-info">
+                                    <div class="item-name">${item.name}</div>
+                                    <div class="item-quantity">Cantidad: ${item.quantity}</div>
+                                </div>
+                                ${isHighlighted ? '<div style="color: #ff6b6b; font-weight: bold;">⚠️</div>' : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    categoryHTML += '</div>';
+                } else {
+                    categoryHTML += '<p style="text-align: center; color: #666; font-style: italic;">No hay items disponibles</p>';
+                }
+                
+                categoryDiv.innerHTML = categoryHTML;
+                categoriesContainer.appendChild(categoryDiv);
+            });
+        }
+
+        // Calcular próximo momento de llamada (múltiplos de 5 + 30s)
+        function getNextCallTime() {
+            const now = new Date();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            
+            // Encontrar el próximo múltiplo de 5
+            const nextMultiple = Math.ceil(minutes / 5) * 5;
+            const nextCallMinute = nextMultiple % 60;
+            
+            const nextCall = new Date(now);
+            if (nextMultiple >= 60) {
+                nextCall.setHours(nextCall.getHours() + 1);
+            }
+            nextCall.setMinutes(nextCallMinute);
+            nextCall.setSeconds(30); // 30 segundos después
+            nextCall.setMilliseconds(0);
+            
+            return nextCall;
+        }
+
+        // Programar próxima llamada
+        function scheduleNextCall() {
+            const nextCall = getNextCallTime();
+            const now = new Date();
+            const delay = nextCall.getTime() - now.getTime();
+            
+            console.log(`Próxima llamada programada para: ${nextCall.toLocaleTimeString('es-ES')}`);
+            
+            setTimeout(() => {
+                fetchData();
+                scheduleNextCall(); // Programar la siguiente
+            }, delay);
+        }
+
+        // Event listeners
+        document.getElementById('alertInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addAlert();
+            }
+        });
+
+        document.getElementById('merchantAlert').addEventListener('change', function(e) {
+            merchantAlertEnabled = e.target.checked;
+            saveSettings();
+        });
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSettings();
+            fetchData(); // Llamada inicial
+            scheduleNextCall(); // Programar llamadas automáticas
+        });
+    </script>
+</body>
+</html>

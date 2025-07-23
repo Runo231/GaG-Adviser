@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grow A Garden Notifier</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f7fafc; color: #333; margin: 0; padding: 1rem; }
+  h1 { text-align: center; color: #2d6a4f; }
+  .category { background: #fff; border-radius: 8px; padding: 1rem; margin: 1rem 0; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
+  .item { display: flex; align-items: center; padding: 0.25rem; border-radius: 4px; }
+  .item.important { background: #ffe5e5; }
+  .emoji { font-size: 1.5rem; margin-right: 0.5rem; }
+  .settings { margin: 1rem 0; }
+  .settings input { padding: 0.25rem; }
+  .settings button { padding: 0.25rem 0.5rem; margin-left: 0.5rem; }
+</style>
+</head>
+<body>
+
+<h1>Grow A Garden Notifier</h1>
+<div class="settings">
+  <label>
+    <input type="checkbox" id="merchantAlert"> Avisar por Traveling Merchant
+  </label>
+  <br>
+  <input type="text" id="newAlert" placeholder="Nombre de item">
+  <button onclick="addAlert()">Añadir Alerta</button>
+</div>
+<div id="alerts"></div>
+<div id="categories"></div>
+<audio id="alertSound" src="https://notificationsounds.com/storage/sounds/file-sounds-1155-pristine.mp3"></audio>
+
+<script>
+const ENDPOINT = 'https://gagstock.gleeze.com/grow-a-garden';
+const alertSound = document.getElementById('alertSound');
+const categoriesDiv = document.getElementById('categories');
+const alertsDiv = document.getElementById('alerts');
+const merchantCheckbox = document.getElementById('merchantAlert');
+const newAlertInput = document.getElementById('newAlert');
+
+function loadSettings() {
+  const alerts = JSON.parse(localStorage.getItem('alerts') || '[]');
+  const merchant = localStorage.getItem('merchantAlert') === 'true';
+  merchantCheckbox.checked = merchant;
+  alerts.forEach(a => addAlertToUI(a));
+}
+
+merchantCheckbox.addEventListener('change', () => {
+  localStorage.setItem('merchantAlert', merchantCheckbox.checked);
+});
+
+function addAlert() {
+  const name = newAlertInput.value.trim();
+  if (!name) return;
+  const alerts = JSON.parse(localStorage.getItem('alerts') || '[]');
+  if (!alerts.includes(name.toLowerCase())) {
+    alerts.push(name.toLowerCase());
+    localStorage.setItem('alerts', JSON.stringify(alerts));
+    addAlertToUI(name);
+  }
+  newAlertInput.value = '';
+}
+
+function addAlertToUI(name) {
+  const div = document.createElement('div');
+  div.textContent = name;
+  alertsDiv.appendChild(div);
+}
+
+function checkAndUpdate() {
+  fetch(ENDPOINT).then(r => r.json()).then(data => {
+    if (data.status !== 'success') return;
+    categoriesDiv.innerHTML = '';
+    const alerts = JSON.parse(localStorage.getItem('alerts') || '[]');
+    const merchantAlert = merchantCheckbox.checked;
+
+    Object.entries(data.data).forEach(([category, value]) => {
+      if (category === 'travelingmerchant' && value.status === 'leaved') return;
+
+      if (category === 'travelingmerchant' && merchantAlert) {
+        alertSound.play();
+      }
+
+      const catDiv = document.createElement('div');
+      catDiv.className = 'category';
+      catDiv.innerHTML = `<h2>${category}</h2><p>Countdown: ${value.countdown || value.appearIn || 'N/A'}</p>`;
+
+      value.items.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'item';
+        if (alerts.includes(item.name.toLowerCase())) {
+          itemDiv.classList.add('important');
+          alertSound.play();
+        }
+        itemDiv.innerHTML = `<span class="emoji">${item.emoji}</span> ${item.name} x${item.quantity}`;
+        catDiv.appendChild(itemDiv);
+      });
+
+      categoriesDiv.appendChild(catDiv);
+    });
+  });
+}
+
+function scheduleNext() {
+  const now = new Date();
+  const next = new Date(now.getTime() + 1000);
+  next.setSeconds(30);
+  next.setMilliseconds(0);
+  const minutes = now.getMinutes();
+  const nextMinutes = minutes % 5 === 0 && now.getSeconds() < 30 ? 0 : 5 - (minutes % 5);
+  next.setMinutes(now.getMinutes() + nextMinutes);
+  const delay = next - now;
+  setTimeout(() => {
+    checkAndUpdate();
+    scheduleNext();
+  }, delay);
+}
+
+loadSettings();
+checkAndUpdate();
+scheduleNext();
+</script>
+
+</body>
+</html>
