@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,48 +16,59 @@
     <!-- Tone.js for sound notifications -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
 
+    <script>
+        // Apply dark mode immediately to prevent flash of light mode
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <style>
         /* Custom styles for a more polished look */
         body {
             font-family: 'Poppins', sans-serif;
-            background-color: #f0fdf4; /* Light green background */
-            color: #1f2937;
         }
         .header {
             font-family: 'Poppins', sans-serif;
             font-weight: 700;
         }
         .card {
-            background-color: white;
             border-radius: 1rem;
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
         }
         .card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
         }
         .category-title {
             font-family: 'Poppins', sans-serif;
             font-weight: 600;
-            color: #166534; /* Dark green */
-            border-bottom: 2px solid #dcfce7;
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-            text-transform: capitalize;
         }
         .item-alert {
             background-color: #fefce8; /* Light yellow for alert */
             border-left: 4px solid #facc15; /* Yellow border */
             animation: pulse-bg 2s infinite;
         }
+        .dark .item-alert {
+            background-color: #4a411c;
+            border-left-color: #eab308;
+        }
         @keyframes pulse-bg {
-            0% { background-color: #fefce8; }
-            50% { background-color: #fde68a; }
-            100% { background-color: #fefce8; }
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        .time-warning {
+            border: 2px solid #fb923c; /* orange-400 */
+            box-shadow: 0 0 15px rgba(251, 146, 60, 0.5);
+        }
+        .dark .time-warning {
+            border-color: #f97316; /* orange-500 */
         }
         .btn {
-            transition: background-color 0.2s, transform 0.2s;
+            transition: all 0.2s;
         }
         .btn:hover {
             transform: scale(1.05);
@@ -78,45 +89,58 @@
         }
     </style>
 </head>
-<body class="antialiased">
+<body class="bg-gray-50 text-gray-800 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-300 antialiased">
 
-    <!-- Audio element for notification sound -->
-    <audio id="notification-sound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+    <audio id="notification-sound" src="https://www.sonidosmp3gratis.com/sounds/SD_ALERT_28.mp3" preload="auto"></audio>
 
     <div class="container mx-auto p-4 md:p-8">
         
-        <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold text-green-800 header">Grow a Garden Tracker</h1>
-            <p class="text-gray-500 mt-2">Stock actualizado en tiempo real con alertas personalizadas.</p>
-            <div id="status-container" class="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-600">
+        <!-- Header with Settings -->
+        <header class="relative text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-green-800 dark:text-green-300 header">Grow a Garden Tracker</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-2">Stock actualizado en tiempo real con alertas personalizadas.</p>
+            
+            <!-- Settings Panel -->
+            <div class="absolute top-0 right-0 flex items-center space-x-4 p-2 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-lg border border-gray-200 dark:border-gray-700">
+                <!-- Volume Slider -->
+                <div class="flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                    <input type="range" id="volume-slider" min="0" max="1" step="0.05" class="w-24 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700">
+                </div>
+                <!-- Theme Toggle -->
+                <button id="theme-toggle" class="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg id="theme-toggle-dark-icon" class="hidden h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden h-5 w-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" fill-rule="evenodd" clip-rule="evenodd"></path></svg>
+                </button>
+            </div>
+
+            <div id="status-container" class="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
                 <span id="status-dot" class="status-dot status-ok"></span>
                 <span id="last-updated">Esperando la primera actualización...</span>
             </div>
         </header>
 
         <!-- Alerts Configuration -->
-        <div class="card p-6 mb-8 max-w-4xl mx-auto">
-            <h2 class="text-2xl category-title">Configuración de Alertas</h2>
+        <div class="card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 mb-8 max-w-4xl mx-auto transition-all duration-300">
+            <h2 class="text-2xl category-title text-green-700 dark:text-green-400 border-b-2 border-green-100 dark:border-green-900 pb-2 mb-4">Configuración de Alertas</h2>
             <div class="grid md:grid-cols-2 gap-6">
                 <!-- Add new alert -->
                 <div>
                     <h3 class="font-semibold text-lg mb-2">Añadir Alerta de Objeto</h3>
                     <form id="add-alert-form" class="flex items-center space-x-2">
-                        <input type="text" id="alert-item-name" placeholder="Ej: Mythical Egg" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition" required>
-                        <button type="submit" class="btn bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700">Añadir</button>
+                        <input type="text" id="alert-item-name" placeholder="Ej: Mythical Egg" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition dark:bg-gray-700 dark:border-gray-600" required>
+                        <button type="submit" class="btn bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600">Añadir</button>
                     </form>
                     <div class="mt-4 flex items-center">
-                        <input type="checkbox" id="traveling-merchant-alert" class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500">
-                        <label for="traveling-merchant-alert" class="ml-2 text-gray-700">Avisarme si aparece el Mercader Ambulante</label>
+                        <input type="checkbox" id="traveling-merchant-alert" class="h-5 w-5 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700">
+                        <label for="traveling-merchant-alert" class="ml-2 text-gray-700 dark:text-gray-300">Avisarme si aparece el Mercader Ambulante</label>
                     </div>
                 </div>
                 <!-- Current alerts list -->
                 <div>
                     <h3 class="font-semibold text-lg mb-2">Alertas Activas</h3>
                     <ul id="alerts-list" class="space-y-2 h-32 overflow-y-auto pr-2">
-                        <!-- Alerts will be dynamically added here -->
-                        <li class="text-gray-500">No hay alertas activas.</li>
+                        <li class="text-gray-500 dark:text-gray-400">No hay alertas activas.</li>
                     </ul>
                 </div>
             </div>
@@ -124,11 +148,11 @@
 
         <!-- Loading Spinner -->
         <div id="loading-spinner" class="text-center py-10">
-            <svg class="animate-spin h-10 w-10 text-green-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <svg class="animate-spin h-10 w-10 text-green-600 dark:text-green-400 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <p class="mt-2 text-gray-600">Buscando datos frescos...</p>
+            <p class="mt-2 text-gray-600 dark:text-gray-400">Buscando datos frescos...</p>
         </div>
 
         <!-- Main content grid -->
@@ -149,41 +173,61 @@
             const alertItemNameInput = document.getElementById('alert-item-name');
             const alertsList = document.getElementById('alerts-list');
             const merchantAlertCheckbox = document.getElementById('traveling-merchant-alert');
-            const notificationSound = new Tone.Synth().toDestination();
-
+            const notificationAudio = document.getElementById('notification-sound');
+            const volumeSlider = document.getElementById('volume-slider');
+            const themeToggleButton = document.getElementById('theme-toggle');
+            const darkIcon = document.getElementById('theme-toggle-dark-icon');
+            const lightIcon = document.getElementById('theme-toggle-light-icon');
+            
             // --- STATE & CONFIG ---
-            // We use a CORS proxy to bypass browser security restrictions (CORS policy).
-            // This allows the script to work when hosted on services like GitHub Pages.
-            const PROXY_URL = 'https://corsproxy.io/?'; // Using a more reliable proxy
+            const PROXY_URL = 'https://corsproxy.io/?';
             const API_ENDPOINT = 'https://gagstock.gleeze.com/grow-a-garden';
             const API_URL = `${PROXY_URL}${encodeURIComponent(API_ENDPOINT)}`;
             
             let alerts = JSON.parse(localStorage.getItem('gardenAlerts')) || [];
             let notifyForMerchant = localStorage.getItem('notifyForMerchant') === 'true';
+            let currentVolume = parseFloat(localStorage.getItem('alertVolume')) || 0.5;
 
             // --- FUNCTIONS ---
 
-            /**
-             * Plays a notification sound.
-             */
-            function playNotificationSound() {
-                // Play a C4 note for 0.5 seconds
-                Tone.start(); // Required to start audio context in some browsers
-                notificationSound.triggerAttackRelease("C5", "8n");
+            window.addAlert = (itemName) => {
+                const normalizedItem = itemName.trim().toLowerCase();
+                if (normalizedItem && !alerts.map(a => a.toLowerCase()).includes(normalizedItem)) {
+                    alerts.push(itemName.trim());
+                    saveAlerts();
+                    renderAlerts();
+                    // Provide visual feedback
+                    const alertInput = document.getElementById('alert-item-name');
+                    alertInput.placeholder = `${itemName} añadido a alertas!`;
+                    setTimeout(() => { alertInput.placeholder = 'Ej: Mythical Egg'; }, 2000);
+                }
             }
 
-            /**
-             * Renders the list of active alerts.
-             */
+            function playNotificationSound() {
+                Tone.start();
+                notificationAudio.volume = currentVolume;
+                notificationAudio.play().catch(e => console.error("Error al reproducir sonido:", e));
+            }
+            
+            function parseCountdownToMinutes(countdownStr) {
+                if (!countdownStr) return 0;
+                let totalMinutes = 0;
+                const hoursMatch = countdownStr.match(/(\d+)h/);
+                const minutesMatch = countdownStr.match(/(\d+)m/);
+                if (hoursMatch) totalMinutes += parseInt(hoursMatch[1], 10) * 60;
+                if (minutesMatch) totalMinutes += parseInt(minutesMatch[1], 10);
+                return totalMinutes;
+            }
+
             function renderAlerts() {
                 alertsList.innerHTML = '';
                 if (alerts.length === 0) {
-                    alertsList.innerHTML = '<li class="text-gray-500">No hay alertas activas.</li>';
+                    alertsList.innerHTML = '<li class="text-gray-500 dark:text-gray-400">No hay alertas activas.</li>';
                     return;
                 }
                 alerts.forEach(alertItem => {
                     const li = document.createElement('li');
-                    li.className = 'flex justify-between items-center bg-gray-100 p-2 rounded-md';
+                    li.className = 'flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md';
                     li.textContent = alertItem;
                     const deleteBtn = document.createElement('button');
                     deleteBtn.innerHTML = '&times;';
@@ -194,44 +238,19 @@
                 });
             }
             
-            /**
-             * Saves alerts to localStorage.
-             */
             function saveAlerts() {
                 localStorage.setItem('gardenAlerts', JSON.stringify(alerts));
             }
 
-            /**
-             * Adds a new alert item.
-             * @param {string} itemName - The name of the item to add.
-             */
-            function addAlert(itemName) {
-                const normalizedItem = itemName.trim().toLowerCase();
-                if (normalizedItem && !alerts.map(a => a.toLowerCase()).includes(normalizedItem)) {
-                    alerts.push(itemName.trim());
-                    saveAlerts();
-                    renderAlerts();
-                }
-                alertItemNameInput.value = '';
-            }
-
-            /**
-             * Removes an alert item.
-             * @param {string} itemName - The name of the item to remove.
-             */
             function removeAlert(itemName) {
                 alerts = alerts.filter(item => item.toLowerCase() !== itemName.toLowerCase());
                 saveAlerts();
                 renderAlerts();
             }
 
-            /**
-             * Renders the data from the API onto the page.
-             * @param {object} apiData - The data object from the API.
-             */
             function renderData(apiData) {
                 contentGrid.innerHTML = '';
-                let notificationTriggered = false;
+                let soundNotificationTriggered = false;
                 const lowerCaseAlerts = alerts.map(a => a.toLowerCase());
 
                 for (const category in apiData) {
@@ -239,74 +258,71 @@
                         continue;
                     }
 
-                    // Special handling for the Traveling Merchant
                     if (category === 'travelingmerchant') {
-                        if (apiData[category].status === 'leaved') {
-                            continue; // Skip if the merchant has left
-                        }
-                        if (notifyForMerchant) {
-                            notificationTriggered = true; // Trigger sound if it appears
-                        }
+                        if (apiData[category].status === 'leaved') continue;
+                        if (notifyForMerchant) soundNotificationTriggered = true;
                     }
 
                     const categoryCard = document.createElement('div');
-                    categoryCard.className = 'card p-6';
+                    categoryCard.className = 'card bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-6 transition-all duration-300';
+
+                    const countdownMinutes = parseCountdownToMinutes(apiData[category].countdown);
+                    let isTimeWarning = false;
+                    if (category === 'egg' && countdownMinutes >= 25 && countdownMinutes < 30) isTimeWarning = true;
+                    if (category === 'honey' && countdownMinutes >= 55 && countdownMinutes < 60) isTimeWarning = true;
+                    if (category === 'cosmetics' && countdownMinutes >= 115 && countdownMinutes < 120) isTimeWarning = true;
+                    if (isTimeWarning) categoryCard.classList.add('time-warning');
+
+                    apiData[category].items.sort((a, b) => a.quantity - b.quantity);
                     
-                    let itemsHtml = `<h3 class="category-title text-xl mb-4">${category.replace(/_/g, ' ')}</h3><ul class="space-y-3">`;
+                    let itemsHtml = `<h3 class="category-title text-green-700 dark:text-green-400 border-b-2 border-green-100 dark:border-green-900 text-xl pb-2 mb-4">${category.replace(/_/g, ' ')}</h3><ul class="space-y-3">`;
 
                     apiData[category].items.forEach(item => {
-                        const isAlerted = lowerCaseAlerts.includes(item.name.toLowerCase());
-                        if (isAlerted) {
-                            notificationTriggered = true;
-                        }
-                        const alertClass = isAlerted ? 'item-alert' : 'bg-white';
+                        const isItemAlert = lowerCaseAlerts.includes(item.name.toLowerCase());
+                        if (isItemAlert) soundNotificationTriggered = true;
+                        
+                        const alertClass = isItemAlert ? 'item-alert' : '';
+                        const safeItemName = item.name.replace(/'/g, "\\'");
                         
                         itemsHtml += `
-                            <li class="flex items-center justify-between p-2 rounded-lg transition ${alertClass}">
+                            <li class="relative flex items-center justify-between p-2 rounded-lg transition ${alertClass}">
                                 <div class="flex items-center">
                                     <span class="text-2xl mr-3">${item.emoji}</span>
-                                    <span class="font-medium text-gray-800">${item.name}</span>
+                                    <span class="font-medium">${item.name}</span>
                                 </div>
-                                <span class="font-bold text-green-700 bg-green-100 px-3 py-1 rounded-full text-sm">${item.quantity}</span>
+                                <span class="font-bold text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-500/20 px-3 py-1 rounded-full text-sm">${item.quantity}</span>
+                                <button onclick="addAlert('${safeItemName}')" title="Añadir alerta para ${item.name}" class="absolute top-1 right-1 p-1 rounded-full text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-500 transition-colors duration-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                      <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
                             </li>
                         `;
                     });
 
                     itemsHtml += '</ul>';
                     
-                    // Add countdown timer if it exists
-                    if (apiData[category].countdown) {
-                         itemsHtml += `<p class="text-sm text-gray-500 mt-4 text-center">Reinicia en: <span class="font-semibold">${apiData[category].countdown}</span></p>`;
-                    }
-                    if (apiData[category].appearIn) {
-                         itemsHtml += `<p class="text-sm text-gray-500 mt-4 text-center">Aparece en: <span class="font-semibold">${apiData[category].appearIn}</span></p>`;
-                    }
-
+                    if (apiData[category].countdown) itemsHtml += `<p class="text-sm text-gray-500 dark:text-gray-400 mt-4 text-center">Reinicia en: <span class="font-semibold">${apiData[category].countdown}</span></p>`;
+                    if (apiData[category].appearIn) itemsHtml += `<p class="text-sm text-gray-500 dark:text-gray-400 mt-4 text-center">Aparece en: <span class="font-semibold">${apiData[category].appearIn}</span></p>`;
 
                     categoryCard.innerHTML = itemsHtml;
                     contentGrid.appendChild(categoryCard);
                 }
 
-                if (notificationTriggered) {
+                if (soundNotificationTriggered) {
                     playNotificationSound();
                 }
             }
 
-            /**
-             * Fetches data from the API and updates the UI.
-             */
             async function fetchData() {
-                console.log(`[${new Date().toLocaleTimeString()}] Fetching data via proxy...`);
+                console.log(`[${new Date().toLocaleTimeString()}] Fetching data...`);
                 loadingSpinner.style.display = 'block';
                 contentGrid.style.display = 'none';
                 statusDot.classList.remove('status-ok', 'status-error');
 
                 try {
                     const response = await fetch(API_URL);
-                    if (!response.ok) {
-                        throw new Error(`Proxy or API error! status: ${response.status}`);
-                    }
-                    // The new proxy allows direct JSON parsing
+                    if (!response.ok) throw new Error(`Proxy/API error! status: ${response.status}`);
                     const result = await response.json();
                     
                     if (result.status === 'success' && result.data) {
@@ -316,14 +332,13 @@
                     } else {
                         throw new Error('API response format is not as expected.');
                     }
-
                 } catch (error) {
-                    console.error("Failed to fetch or parse data:", error);
+                    console.error("Failed to fetch/parse data:", error);
                     lastUpdatedElement.textContent = `Error al actualizar: ${error.message}`;
                     statusDot.classList.add('status-error');
-                    contentGrid.innerHTML = `<div class="col-span-full text-center p-10 bg-red-50 rounded-lg">
-                        <h3 class="text-xl font-bold text-red-700">¡Oops! Algo salió mal</h3>
-                        <p class="text-red-600 mt-2">No se pudieron cargar los datos. Revisa la consola para más detalles. Se intentará de nuevo automáticamente.</p>
+                    contentGrid.innerHTML = `<div class="col-span-full text-center p-10 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                        <h3 class="text-xl font-bold text-red-700 dark:text-red-400">¡Oops! Algo salió mal</h3>
+                        <p class="text-red-600 dark:text-red-500 mt-2">No se pudieron cargar los datos. Se intentará de nuevo automáticamente.</p>
                     </div>`;
                 } finally {
                     loadingSpinner.style.display = 'none';
@@ -331,57 +346,67 @@
                 }
             }
 
-            /**
-             * Calculates the delay until the next fetch time and schedules it.
-             */
             function scheduleNextFetch() {
                 const now = new Date();
-                const currentMinutes = now.getMinutes();
-                
-                // Calculate minutes to the next 5-minute mark (0, 5, 10, ...)
-                const minutesUntilNextInterval = 5 - (currentMinutes % 5);
-                
-                // Set target time to the next interval + 30 seconds for data availability
+                const minutesUntilNextInterval = 5 - (now.getMinutes() % 5);
                 const nextFetchTime = new Date(now.getTime());
                 nextFetchTime.setMinutes(now.getMinutes() + minutesUntilNextInterval, 30, 0);
 
-                // If the calculated time is in the past, schedule for the next interval
                 if (nextFetchTime <= now) {
                     nextFetchTime.setMinutes(nextFetchTime.getMinutes() + 5);
                 }
 
                 const delay = nextFetchTime - now;
-                
                 console.log(`Next fetch scheduled at ${nextFetchTime.toLocaleTimeString()} (in ${Math.round(delay/1000)}s)`);
                 lastUpdatedElement.textContent = `Próxima actualización a las ${nextFetchTime.toLocaleTimeString()}`;
 
                 setTimeout(() => {
                     fetchData();
-                    // Reschedule the next one after the fetch is complete
                     scheduleNextFetch();
                 }, delay);
             }
 
-            // --- INITIALIZATION ---
-
-            // Setup event listeners for alerts
-            addAlertForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                addAlert(alertItemNameInput.value);
+            // --- INITIALIZATION & EVENT LISTENERS ---
+            
+            function updateThemeToggleIcons() {
+                if (document.documentElement.classList.contains('dark')) {
+                    darkIcon.classList.remove('hidden');
+                    lightIcon.classList.add('hidden');
+                } else {
+                    darkIcon.classList.add('hidden');
+                    lightIcon.classList.remove('hidden');
+                }
+            }
+            themeToggleButton.addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+                updateThemeToggleIcons();
             });
 
+            volumeSlider.value = currentVolume;
+            notificationAudio.volume = currentVolume;
+            volumeSlider.addEventListener('input', (e) => {
+                currentVolume = parseFloat(e.target.value);
+                notificationAudio.volume = currentVolume;
+                localStorage.setItem('alertVolume', currentVolume);
+            });
+
+            addAlertForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                window.addAlert(alertItemNameInput.value);
+                alertItemNameInput.value = '';
+            });
             merchantAlertCheckbox.checked = notifyForMerchant;
             merchantAlertCheckbox.addEventListener('change', (e) => {
                 notifyForMerchant = e.target.checked;
                 localStorage.setItem('notifyForMerchant', notifyForMerchant);
             });
 
-            // Initial render of alerts from localStorage
+            updateThemeToggleIcons();
             renderAlerts();
-
-            // Start the fetch cycle
-            fetchData(); // Fetch immediately on load
-            scheduleNextFetch(); // Then schedule the next fetches
+            
+            fetchData();
+            scheduleNextFetch();
         });
     </script>
 </body>
