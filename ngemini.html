@@ -7,6 +7,46 @@
     
     <style>
         /* 1. Variables y Tema */
+        /* Botón moderno para ver todos los ítems de la categoría */
+        .category-items-btn {
+            display: block;
+            margin: 1.5rem auto 1rem auto;
+            padding: 0.7rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 24px;
+            border: none;
+            background: var(--accent-color);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: background var(--transition-speed), box-shadow var(--transition-speed);
+        }
+        .category-items-btn:hover {
+            background: var(--accent-color-hover);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+        }
+        body.dark-theme .category-items-btn {
+            background: var(--accent-color);
+            color: #fff;
+        }
+        body.dark-theme .category-items-btn:hover {
+            background: var(--accent-color-hover);
+        }
+
+        /* Modal mejorado para listado de ítems */
+        .modal-content.category-modal {
+            max-width: 700px;
+            max-height: 90vh;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-content.category-modal .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 1rem;
+        }
         :root {
             --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             --font-size-base: 16px;
@@ -420,7 +460,42 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         
+        // --- REFERENCIAS A ELEMENTOS DEL DOM ---
+        const dom = {
+            statusLight: document.getElementById('status-light'),
+            lastUpdate: document.getElementById('last-update'),
+            themeSwitcher: document.getElementById('theme-switcher'),
+            weatherContainer: document.getElementById('weather-container'),
+            stockSectionsContainer: document.getElementById('stock-sections'),
+            alertList: document.getElementById('alert-list'),
+            travelingMerchantToggle: document.getElementById('traveling-merchant-alert-toggle'),
+            volumeSlider: document.getElementById('volume-slider'),
+            alertSound: document.getElementById('alert-sound'),
+            errorContainer: document.getElementById('error-container'),
+            modal: document.getElementById('item-info-modal'),
+            modalTitle: document.getElementById('modal-title'),
+            modalBody: document.getElementById('modal-body'),
+            modalCloseBtn: document.getElementById('modal-close-btn'),
+            categoryDialog: null
+        };
+
         // --- VARIABLES Y CONSTANTES GLOBALES ---
+        function formatMoney(amount) {
+            if (typeof amount === 'string') amount = parseInt(amount);
+            if (isNaN(amount)) return amount;
+            return amount.toLocaleString('es-ES');
+        }
+        async function fetchAllItems() {
+            try {
+                const response = await fetch('https://api.joshlei.com/v2/growagarden/info');
+                if (!response.ok) throw new Error('No se pudo obtener la lista de ítems.');
+                const items = await response.json();
+                state.allItems = items;
+            } catch (e) {
+                console.error('Error al obtener ítems:', e);
+                state.allItems = [];
+            }
+        }
         const API_BASE = 'https://api.joshlei.com/v2/growagarden';
         const API_ROUTES = {
             stock: `${API_BASE}/stock`,
@@ -447,25 +522,8 @@
             lastStockData: null,
             itemInfoCache: new Map(),
             countdownTimers: [],
-            notifiedItems: [] // [{id, start, end}]
-        };
-
-        // --- REFERENCIAS A ELEMENTOS DEL DOM ---
-        const dom = {
-            statusLight: document.getElementById('status-light'),
-            lastUpdate: document.getElementById('last-update'),
-            themeSwitcher: document.getElementById('theme-switcher'),
-            weatherContainer: document.getElementById('weather-container'),
-            stockSectionsContainer: document.getElementById('stock-sections'),
-            alertList: document.getElementById('alert-list'),
-            travelingMerchantToggle: document.getElementById('traveling-merchant-alert-toggle'),
-            volumeSlider: document.getElementById('volume-slider'),
-            alertSound: document.getElementById('alert-sound'),
-            errorContainer: document.getElementById('error-container'),
-            modal: document.getElementById('item-info-modal'),
-            modalTitle: document.getElementById('modal-title'),
-            modalBody: document.getElementById('modal-body'),
-            modalCloseBtn: document.getElementById('modal-close-btn'),
+            notifiedItems: [], // [{id, start, end}]
+            allItems: [] // Todos los ítems del endpoint /info
         };
 
         // --- FUNCIONES DE INICIALIZACIÓN Y CONFIGURACIÓN ---
@@ -491,9 +549,11 @@
                 if (e.target === dom.modal) hideItemInfoModal();
             });
 
-            // Iniciar ciclo de actualización
-            fetchData();
-            startUpdateCycle();
+            // Cargar todos los ítems posibles
+            fetchAllItems().then(() => {
+                fetchData();
+                startUpdateCycle();
+            });
         }
         
         function startUpdateCycle() {
@@ -629,26 +689,130 @@
         // --- LÓGICA DE RENDERIZADO ---
 
         function renderStock(data) {
-            dom.stockSectionsContainer.innerHTML = ''; // Limpiar contenido anterior
+            dom.stockSectionsContainer.innerHTML = '';
             for (const categoryKey in CATEGORY_MAP) {
+                let typeFilter = null;
+                switch (categoryKey) {
+                    case 'seed_stock': typeFilter = 'seed'; break;
+                    case 'gear_stock': typeFilter = 'gear'; break;
+                    case 'egg_stock': typeFilter = 'egg'; break;
+                    case 'cosmetic_stock': typeFilter = 'cosmetic'; break;
+                    case 'eventshop_stock': typeFilter = 'event'; break;
+                }
+                const possibleItems = typeFilter ? state.allItems.filter(i => i.type === typeFilter) : [];
+
                 if (data[categoryKey] && data[categoryKey].length > 0) {
                     const categoryName = CATEGORY_MAP[categoryKey];
                     const sectionEl = document.createElement('section');
                     sectionEl.className = 'section';
-                    
+
+                    // Botón para abrir el diálogo de selección
+                    let dialogBtnHtml = '';
+                    if (possibleItems.length > 0) {
+                        dialogBtnHtml = `<button id="open-dialog-btn-${categoryKey}" class="category-items-btn">Ver todos los ítems de la categoría</button>`;
+                    }
+
                     const itemsHtml = data[categoryKey].map(item => createItemCard(item, categoryKey)).join('');
-                    
+
                     sectionEl.innerHTML = `
                         <div class="section-header"><h2 class="section-title">${categoryName}</h2></div>
+                        ${dialogBtnHtml}
                         <div class="grid-container">${itemsHtml}</div>
                     `;
                     dom.stockSectionsContainer.appendChild(sectionEl);
-                } else if (categoryKey === 'travelingmerchant_stock' && data[categoryKey]?.status === "Not in town") {
-                    // Opcional: mostrar un mensaje si el mercader no está
+
+                    // Listener para abrir el diálogo
+                    if (possibleItems.length > 0) {
+                        setTimeout(() => {
+                            const btn = document.getElementById(`open-dialog-btn-${categoryKey}`);
+                            if (btn) {
+                                btn.addEventListener('click', () => {
+                                    showCategoryDialog(categoryKey, possibleItems);
+                                });
+                            }
+                        }, 0);
+                    }
                 }
             }
-            // Añadir listeners después de renderizar
             addCardListeners();
+        // Modal para mostrar todos los ítems de la categoría
+        function showCategoryDialog(categoryKey, items) {
+            // Ordenar por precio ascendente, precio 0 al final
+            items = items.slice().sort((a, b) => {
+                const priceA = parseInt(a.price) || 0;
+                const priceB = parseInt(b.price) || 0;
+                if (priceA === 0 && priceB === 0) return 0;
+                if (priceA === 0) return 1;
+                if (priceB === 0) return -1;
+                return priceA - priceB;
+            });
+            // Crear el modal
+            let modal = document.createElement('div');
+            modal.className = 'modal-overlay visible';
+            modal.style.zIndex = '2000';
+            modal.innerHTML = `
+                <div class="modal-content category-modal">
+                    <div class="modal-header">
+                        <h2 class="modal-title">${CATEGORY_MAP[categoryKey]}</h2>
+                        <button class="modal-close" id="close-category-dialog">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;">
+                            ${items.map(item => {
+                                const isActive = state.alerts.some(a => a.id === item.item_id);
+                                return `
+                                <div style="width:180px;background:var(--bg-primary);border-radius:var(--border-radius);border:1px solid var(--border-color);padding:1rem;display:flex;flex-direction:column;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                                    <img src="${item.icon}" alt="${item.display_name}" style="width:48px;height:48px;object-fit:contain;margin-bottom:0.5rem;">
+                                    <div style="font-weight:600;text-align:center;">${item.display_name}</div>
+                                    <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:0.5rem;">${item.rarity || ''}</div>
+                                    <div style="font-size:0.95rem;margin-bottom:0.5rem;">${item.price && item.price !== '0' ? formatMoney(item.price) + ' ' + item.currency : 'Sin precio'}</div>
+                                    <button class="toggle-alert-category-btn" data-item-id="${item.item_id}" style="width:100%;padding:0.4rem;border-radius:6px;font-weight:600;background:${isActive ? 'var(--success-color)' : 'var(--accent-color)'};color:white;border:none;cursor:pointer;">${isActive ? '✓ Alerta Activa' : '+ Activar Alerta'}</button>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            dom.categoryDialog = modal;
+            // Cerrar modal
+            modal.querySelector('#close-category-dialog').addEventListener('click', () => {
+                modal.remove();
+                dom.categoryDialog = null;
+            });
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                    dom.categoryDialog = null;
+                }
+            });
+            // Activar/desactivar alerta
+            modal.querySelectorAll('.toggle-alert-category-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const itemId = btn.dataset.itemId;
+                    const item = items.find(i => i.item_id === itemId);
+                    if (!item) return;
+                    const idx = state.alerts.findIndex(a => a.id === itemId);
+                    if (idx > -1) {
+                        state.alerts.splice(idx, 1);
+                    } else {
+                        state.alerts.push({ id: item.item_id, name: item.display_name, icon: item.icon });
+                    }
+                    saveStateToLocalStorage();
+                    renderAlertList();
+                    // Actualizar botón
+                    btn.textContent = idx > -1 ? '+ Activar Alerta' : '✓ Alerta Activa';
+                    btn.style.background = idx > -1 ? 'var(--accent-color)' : 'var(--success-color)';
+                });
+            });
+        }
+        // Formatear dinero con puntos
+        function formatMoney(amount) {
+            if (typeof amount === 'string') amount = parseInt(amount);
+            if (isNaN(amount)) return amount;
+            return amount.toLocaleString('es-ES');
+        }
         }
         
         function createItemCard(item, category) {
@@ -691,6 +855,17 @@
             startAllCountdowns();
         }
         
+        function addManualAlert(item) {
+            if (state.alerts.some(a => a.id === item.item_id)) return;
+            state.alerts.push({ id: item.item_id, name: item.display_name, icon: item.icon });
+            saveStateToLocalStorage();
+            renderAlertList();
+            document.querySelectorAll(`.alert-button[data-item-id="${item.item_id}"]`).forEach(btn => {
+                btn.classList.add('active');
+                btn.textContent = '✓ Alerta Activa';
+            });
+        }
+
         function renderAlertList() {
             dom.travelingMerchantToggle.checked = state.travelingMerchantAlert;
 
@@ -701,7 +876,10 @@
             
             dom.alertList.innerHTML = state.alerts.map(alert => `
                 <div class="alert-list-item">
-                    <span>${alert.name}</span>
+                    <span style="display:flex;align-items:center;gap:0.5rem;">
+                        ${alert.icon ? `<img src="${alert.icon}" alt="icon" style="width:24px;height:24px;object-fit:contain;">` : ''}
+                        ${alert.name}
+                    </span>
                     <button class="remove-alert-btn" data-item-id="${alert.id}">&times;</button>
                 </div>
             `).join('');
@@ -737,15 +915,15 @@
             if (alertIndex > -1) { // La alerta existe, la eliminamos
                 state.alerts.splice(alertIndex, 1);
             } else { // No existe, la añadimos
-                state.alerts.push({ id: itemId, name: itemName });
+                let icon = '';
+                const found = state.allItems.find(i => i.item_id === itemId);
+                if (found) icon = found.icon;
+                state.alerts.push({ id: itemId, name: itemName, icon });
             }
-            
             saveStateToLocalStorage();
             renderAlertList();
-
-            // Actualizar todos los botones de alerta para este item_id
             document.querySelectorAll(`.alert-button[data-item-id="${itemId}"]`).forEach(btn => {
-                const isActive = alertIndex === -1; // Será activo si antes no lo estaba
+                const isActive = alertIndex === -1;
                 btn.classList.toggle('active', isActive);
                 btn.textContent = isActive ? '✓ Alerta Activa' : '+ Alerta';
             });
@@ -908,7 +1086,7 @@
                 dom.modalBody.innerHTML = `
                     <p>${itemInfo.description || 'Sin descripción.'}</p>
                     <p><strong>Rareza:</strong> ${itemInfo.rarity || 'N/A'}</p>
-                    <p><strong>Precio de venta:</strong> ${itemInfo.price ? `${itemInfo.price} ${itemInfo.currency}` : 'N/A'}</p>
+                    <p><strong>Precio de venta:</strong> ${itemInfo.price ? `${formatMoney(itemInfo.price)} ${itemInfo.currency}` : 'N/A'}</p>
                     <p><strong>Visto por última vez:</strong> ${itemInfo.last_seen ? new Date(itemInfo.last_seen).toLocaleString() : 'N/A'}</p>
                 `;
 
