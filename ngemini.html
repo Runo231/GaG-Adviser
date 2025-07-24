@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grow a Garden - Dashboard</title>
+    
+    <style>
+        /* 1. Variables y Tema */
+        :root {
+            --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            --font-size-base: 16px;
+            --border-radius: 8px;
+            --transition-speed: 0.3s;
+            
+            /* Tema Claro (Default) */
+            --bg-primary: #f4f7f9;
+            --bg-secondary: #ffffff;
+            --text-primary: #1a202c;
+            --text-secondary: #5a677d;
+            --border-color: #e2e8f0;
+            --accent-color: #3498db;
+            --accent-color-hover: #2980b9;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+        }
+
+        body.dark-theme {
+            /* Tema Oscuro */
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --text-primary: #f7fafc;
+            --text-secondary: #a0aec0;
+            --border-color: #4a5568;
+            --accent-color: #4299e1;
+            --accent-color-hover: #2b6cb0;
+        }
+
+        /* 2. Reseteo y Estilos Base */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: var(--font-size-base);
+            line-height: 1.6;
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* 3. Cabecera y Navegación */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #bdc3c7; /* Gris por defecto */
+        }
+        
+        .status-light.online { background-color: var(--success-color); }
+        .status-light.offline { background-color: var(--error-color); }
+        
+        .last-update {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        
+        .theme-switcher {
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text-primary);
+        }
+
+        /* 4. Secciones y Contenedores */
+        .section {
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+        
+        .section-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(0,0,0,0.02);
+        }
+
+        body.dark-theme .section-header {
+             background-color: rgba(255,255,255,0.02);
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        /* 5. Tarjetas de Ítem */
+        .item-card {
+            background-color: var(--bg-primary);
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+            cursor: pointer;
+        }
+        
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .item-image {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 0.75rem;
+            object-fit: contain;
+        }
+
+        .item-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .item-quantity, .item-countdown {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+        
+        .alert-button {
+            width: 100%;
+            padding: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--border-radius);
+            background-color: var(--accent-color);
+            color: white;
+            cursor: pointer;
+            transition: background-color var(--transition-speed);
+        }
+        
+        .alert-button:hover {
+            background-color: var(--accent-color-hover);
+        }
+
+        .alert-button.active {
+            background-color: var(--success-color);
+        }
+
+        /* 6. Panel de Alertas */
+        .settings-panel {
+            padding: 1.5rem;
+        }
+
+        .settings-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .settings-group h3 {
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .alert-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background-color: var(--bg-primary);
+            border-radius: var(--border-radius);
+            margin-bottom: 0.5rem;
+        }
+        
+        .remove-alert-btn {
+            background: var(--error-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .volume-control input[type="range"] {
+            flex-grow: 1;
+        }
+
+        /* 7. Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--transition-speed), visibility var(--transition-speed);
+            z-index: 1000;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 500px;
+            transform: scale(0.9);
+            transition: transform var(--transition-speed);
+        }
+
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .modal-title {
+            font-size: 1.5rem;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .modal-body p {
+            margin-bottom: 0.75rem;
+        }
+        
+        .modal-body strong {
+            color: var(--text-secondary);
+        }
+
+        /* 8. Utilidades y Responsividad */
+        .hidden {
+            display: none;
+        }
+
+        .error-message {
+            background-color: var(--error-color);
+            color: white;
+            padding: 1rem;
+            text-align: center;
+            border-radius: var(--border-radius);
+            margin: 1rem 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 0.75rem;
+                padding: 1rem;
+            }
+            .grid-container {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 1rem;
+                padding: 1rem;
+            }
+            .item-card {
+                padding: 0.75rem;
+            }
+            .item-image {
+                width: 60px;
+                height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="alert-sound" src="https://www.sonidosmp3gratis.com/sounds/SD_ALERT_28.mp3" preload="auto"></audio>
+    
+    <div id="item-info-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title" class="modal-title">Detalles del Ítem</h2>
+                <button id="modal-close-btn" class="modal-close">&times;</button>
+            </div>
+            <div id="modal-body" class="modal-body">
+                <p>Cargando...</p>
+            </div>
+        </div>
+    </div>
+    
+    <header class="header">
+        <h1>Grow a Garden Dashboard</h1>
+        <div class="header-controls">
+            <div class="status">
+                <div id="status-light" class="status-light"></div>
+                <span id="last-update" class="last-update">Nunca</span>
+            </div>
+            <button id="theme-switcher" class="theme-switcher" title="Cambiar tema">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="container">
+        <div id="error-container"></div>
+        
+        <section class="section">
+            <div class="section-header"><h2 class="section-title">Clima Actual</h2></div>
+            <div id="weather-container" class="grid-container">
+                <p style="padding: 1.5rem; color: var(--text-secondary);">Cargando clima...</p>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-header"><h2 class="section-title">Configuración de Alertas</h2></div>
+            <div class="settings-panel">
+                <div class="settings-group">
+                    <h3>Mercader Ambulante</h3>
+                    <div class="toggle-switch">
+                        <span>Notificar cuando aparezca</span>
+                        <input type="checkbox" id="traveling-merchant-alert-toggle">
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h3>Alertas de Ítems Activas</h3>
+                    <div id="alert-list">
+                        <p>No has añadido ninguna alerta. Haz clic en "+ Alerta" en cualquier ítem.</p>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h3>Volumen</h3>
+                    <div class="volume-control">
+                        <span>🔇</span>
+                        <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+                        <span>🔊</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <div id="stock-sections"></div>
+
+    </main>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        // --- VARIABLES Y CONSTANTES GLOBALES ---
+        const API_BASE = 'https://api.joshlei.com/v2/growagarden';
+        const API_ROUTES = {
+            stock: `${API_BASE}/stock`,
+            weather: `${API_BASE}/weather`,
+            info: `${API_BASE}/info/`,
+            image: `${API_BASE}/image/`,
+            event: `${API_BASE}/currentevent`,
+        };
+
+        const CATEGORY_MAP = {
+            seed_stock: 'Semillas',
+            gear_stock: 'Herramientas',
+            egg_stock: 'Huevos',
+            cosmetic_stock: 'Cosméticos',
+            eventshop_stock: 'Tienda de Evento',
+            travelingmerchant_stock: 'Mercader Ambulante'
+        };
+        
+        let state = {
+            alerts: [],
+            travelingMerchantAlert: false,
+            volume: 0.5,
+            theme: 'light',
+            lastStockData: null,
+            itemInfoCache: new Map(),
+            countdownTimers: []
+        };
+
+        // --- REFERENCIAS A ELEMENTOS DEL DOM ---
+        const dom = {
+            statusLight: document.getElementById('status-light'),
+            lastUpdate: document.getElementById('last-update'),
+            themeSwitcher: document.getElementById('theme-switcher'),
+            weatherContainer: document.getElementById('weather-container'),
+            stockSectionsContainer: document.getElementById('stock-sections'),
+            alertList: document.getElementById('alert-list'),
+            travelingMerchantToggle: document.getElementById('traveling-merchant-alert-toggle'),
+            volumeSlider: document.getElementById('volume-slider'),
+            alertSound: document.getElementById('alert-sound'),
+            errorContainer: document.getElementById('error-container'),
+            modal: document.getElementById('item-info-modal'),
+            modalTitle: document.getElementById('modal-title'),
+            modalBody: document.getElementById('modal-body'),
+            modalCloseBtn: document.getElementById('modal-close-btn'),
+        };
+
+        // --- FUNCIONES DE INICIALIZACIÓN Y CONFIGURACIÓN ---
+        
+        /**
+         * Carga el estado desde localStorage y configura los listeners iniciales.
+         */
+        function initializeApp() {
+            loadStateFromLocalStorage();
+            applyTheme();
+            applyVolume();
+            renderAlertList();
+
+            // Listeners
+            dom.themeSwitcher.addEventListener('click', toggleTheme);
+            dom.volumeSlider.addEventListener('input', (e) => setVolume(e.target.value));
+            dom.travelingMerchantToggle.addEventListener('change', (e) => {
+                state.travelingMerchantAlert = e.target.checked;
+                saveStateToLocalStorage();
+            });
+            dom.modalCloseBtn.addEventListener('click', hideItemInfoModal);
+            dom.modal.addEventListener('click', (e) => {
+                if (e.target === dom.modal) hideItemInfoModal();
+            });
+
+            // Iniciar ciclo de actualización
+            fetchData();
+            startUpdateCycle();
+        }
+		
+		function startUpdateCycle() {
+		  const now = new Date();
+		  const currentMs = now.getTime();
+
+		  // Calcula el siguiente múltiplo de 5 minutos
+		  const next5Min = new Date(now);
+		  next5Min.setSeconds(20);
+		  next5Min.setMilliseconds(0);
+
+		  const minutes = now.getMinutes();
+		  const nextModulo = (Math.floor(minutes / 5) + 1) * 5;
+		  next5Min.setMinutes(nextModulo);
+
+		  // Si ya pasamos el minuto XX:05:30, vamos al próximo
+		  if (next5Min.getTime() <= currentMs) {
+			next5Min.setMinutes(next5Min.getMinutes() + 5);
+		  }
+
+		  const delay = next5Min.getTime() - currentMs;
+
+		  console.log("Esperando", Math.round(delay / 1000), "segundos para recargar...");
+
+		  setTimeout(() => {
+			fetchData(); // primer llamado
+			setInterval(fetchData, 5 * 60 * 1000); // cada 5 minutos
+		  }, delay);
+		}
+
+        // --- MANEJO DE ESTADO Y LOCALSTORAGE ---
+
+        function loadStateFromLocalStorage() {
+            state.theme = localStorage.getItem('theme') || 'light';
+            state.volume = parseFloat(localStorage.getItem('volume')) || 0.5;
+            state.alerts = JSON.parse(localStorage.getItem('alerts')) || [];
+            state.travelingMerchantAlert = localStorage.getItem('travelingMerchantAlert') === 'true';
+        }
+
+        function saveStateToLocalStorage() {
+            localStorage.setItem('theme', state.theme);
+            localStorage.setItem('volume', state.volume);
+            localStorage.setItem('alerts', JSON.stringify(state.alerts));
+            localStorage.setItem('travelingMerchantAlert', state.travelingMerchantAlert);
+        }
+
+        // --- MANEJO DE TEMA Y VOLUMEN ---
+
+        function applyTheme() {
+            document.body.classList.toggle('dark-theme', state.theme === 'dark');
+            const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+            const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
+            dom.themeSwitcher.innerHTML = state.theme === 'dark' ? sunIcon : moonIcon;
+        }
+
+        function toggleTheme() {
+            state.theme = state.theme === 'light' ? 'dark' : 'light';
+            saveStateToLocalStorage();
+            applyTheme();
+        }
+
+        function applyVolume() {
+            dom.volumeSlider.value = state.volume;
+            dom.alertSound.volume = state.volume;
+        }
+
+        function setVolume(volume) {
+            state.volume = volume;
+            dom.alertSound.volume = volume;
+            saveStateToLocalStorage();
+        }
+
+        // --- LLAMADAS A LA API Y MANEJO DE DATOS ---
+
+        /**
+         * Realiza las llamadas a las APIs de stock y clima.
+         */
+        async function fetchData() {
+            clearError();
+            clearAllCountdowns();
+            try {
+                const [stockResponse, weatherResponse] = await Promise.all([
+                    fetch(API_ROUTES.stock),
+                    fetch(API_ROUTES.weather)
+                ]);
+                
+                handleRateLimit(stockResponse);
+                handleRateLimit(weatherResponse);
+
+                if (!stockResponse.ok || !weatherResponse.ok) {
+                    throw new Error('Error al obtener datos de la API.');
+                }
+
+                const stockData = await stockResponse.json();
+                const weatherData = await weatherResponse.json();
+
+                updateStatus(true);
+                
+                checkForAlerts(stockData);
+                state.lastStockData = stockData;
+
+                renderStock(stockData);
+                renderWeather(weatherData);
+
+            } catch (error) {
+                console.error('Error en fetchData:', error);
+                updateStatus(false);
+                displayError(error.message);
+            }
+        }
+        
+        function handleRateLimit(response) {
+            if (response.status === 429) {
+                const retryAfter = response.headers.get('Retry-After');
+                let message = 'Demasiadas peticiones.';
+                if (retryAfter) {
+                    message += ` Por favor, espera ${retryAfter} segundos.`;
+                }
+                throw new Error(message);
+            }
+        }
+
+        function updateStatus(isOnline) {
+            dom.statusLight.classList.toggle('online', isOnline);
+            dom.statusLight.classList.toggle('offline', !isOnline);
+            if(isOnline) {
+                dom.lastUpdate.textContent = `Actualizado: ${new Date().toLocaleTimeString()}`;
+            }
+        }
+
+        // --- LÓGICA DE RENDERIZADO ---
+
+        function renderStock(data) {
+            dom.stockSectionsContainer.innerHTML = ''; // Limpiar contenido anterior
+            for (const categoryKey in CATEGORY_MAP) {
+                if (data[categoryKey] && data[categoryKey].length > 0) {
+                    const categoryName = CATEGORY_MAP[categoryKey];
+                    const sectionEl = document.createElement('section');
+                    sectionEl.className = 'section';
+                    
+                    const itemsHtml = data[categoryKey].map(item => createItemCard(item, categoryKey)).join('');
+                    
+                    sectionEl.innerHTML = `
+                        <div class="section-header"><h2 class="section-title">${categoryName}</h2></div>
+                        <div class="grid-container">${itemsHtml}</div>
+                    `;
+                    dom.stockSectionsContainer.appendChild(sectionEl);
+                } else if (categoryKey === 'travelingmerchant_stock' && data[categoryKey]?.status === "Not in town") {
+                    // Opcional: mostrar un mensaje si el mercader no está
+                }
+            }
+            // Añadir listeners después de renderizar
+            addCardListeners();
+        }
+        
+        function createItemCard(item, category) {
+            const isAlertActive = state.alerts.some(alert => alert.id === item.item_id);
+
+            return `
+                <div class="item-card" data-item-id="${item.item_id}" data-item-name="${item.display_name}">
+                    <img src="${item.icon}" alt="${item.display_name}" class="item-image" loading="lazy">
+                    <div class="item-info">
+                        <p class="item-name">${item.display_name}</p>
+                        ${item.quantity ? `<p class="item-quantity">Cantidad: ${item.quantity}</p>` : ''}
+                        ${item.Date_End ? `<p class="item-countdown" data-end-date="${item.Date_End}">Calculando...</p>` : ''}
+                    </div>
+                    <button class="alert-button ${isAlertActive ? 'active' : ''}" data-item-id="${item.item_id}" data-item-name="${item.display_name}">
+                        ${isAlertActive ? '✓ Alerta Activa' : '+ Alerta'}
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderWeather(data) {
+		console.log(data);
+            const activeWeathers = data.weather.filter(w => w.active);
+            if(activeWeathers.length === 0) {
+                dom.weatherContainer.innerHTML = `<p style="padding: 1.5rem; color: var(--text-secondary);">No hay climas activos.</p>`;
+                return;
+            }
+            
+            dom.weatherContainer.innerHTML = activeWeathers.map(weather => {
+                return `
+                     <div class="item-card" style="cursor: default;">
+                        <img src="${weather.icon}" alt="${weather.weather_name}" class="item-image">
+                        <div class="item-info">
+                            <p class="item-name">${weather.weather_name}</p>
+                            <p class="item-countdown" data-end-date="${new Date(weather.end_duration_unix*1000)}">Calculando...</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            startAllCountdowns();
+        }
+        
+        function renderAlertList() {
+            dom.travelingMerchantToggle.checked = state.travelingMerchantAlert;
+
+            if (state.alerts.length === 0) {
+                dom.alertList.innerHTML = `<p>No has añadido ninguna alerta. Haz clic en "+ Alerta" en cualquier ítem.</p>`;
+                return;
+            }
+            
+            dom.alertList.innerHTML = state.alerts.map(alert => `
+                <div class="alert-list-item">
+                    <span>${alert.name}</span>
+                    <button class="remove-alert-btn" data-item-id="${alert.id}">&times;</button>
+                </div>
+            `).join('');
+
+            // Añadir listeners a los botones de eliminar
+            document.querySelectorAll('.remove-alert-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    toggleAlert(btn.dataset.itemId, null, btn);
+                });
+            });
+        }
+        
+        function addCardListeners() {
+            document.querySelectorAll('.alert-button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Evitar que se abra el modal al hacer clic en el botón
+                    toggleAlert(btn.dataset.itemId, btn.dataset.itemName, btn);
+                });
+            });
+            document.querySelectorAll('.item-card[data-item-id]').forEach(card => {
+                card.addEventListener('click', () => {
+                   showItemInfoModal(card.dataset.itemId);
+                });
+            });
+            startAllCountdowns();
+        }
+
+        // --- LÓGICA DE ALERTAS ---
+
+        function toggleAlert(itemId, itemName, buttonElement) {
+            const alertIndex = state.alerts.findIndex(alert => alert.id === itemId);
+
+            if (alertIndex > -1) { // La alerta existe, la eliminamos
+                state.alerts.splice(alertIndex, 1);
+            } else { // No existe, la añadimos
+                state.alerts.push({ id: itemId, name: itemName });
+            }
+            
+            saveStateToLocalStorage();
+            renderAlertList();
+
+            // Actualizar todos los botones de alerta para este item_id
+            document.querySelectorAll(`.alert-button[data-item-id="${itemId}"]`).forEach(btn => {
+                const isActive = alertIndex === -1; // Será activo si antes no lo estaba
+                btn.classList.toggle('active', isActive);
+                btn.textContent = isActive ? '✓ Alerta Activa' : '+ Alerta';
+            });
+        }
+        
+        function checkForAlerts(newStockData) {
+            if (!state.lastStockData) return; // No comparar en la primera carga
+
+            const newItems = new Set();
+            for (const key in CATEGORY_MAP) {
+			console.log(newStockData[key]);
+                if(newStockData[key] && Array.isArray(newStockData[key])) newStockData[key].forEach(item => newItems.add(item.item_id));
+            }
+
+            const oldItems = new Set();
+             for (const key in CATEGORY_MAP) {
+                if(state.lastStockData[key]) state.lastStockData[key].forEach(item => oldItems.add(item.item_id));
+            }
+            
+            let shouldPlaySound = false;
+            
+            // 1. Chequear ítems en alerta
+            state.alerts.forEach(alert => {
+                // Si el ítem está en la nueva data pero no en la antigua
+                if (newItems.has(alert.id) && !oldItems.has(alert.id)) {
+                    console.log(`ALERTA: ¡${alert.name} está disponible!`);
+                    shouldPlaySound = true;
+                }
+            });
+
+            // 2. Chequear Mercader Ambulante
+            const newMerchantStatus = newStockData.travelingmerchant_stock?.status;
+            const oldMerchantStatus = state.lastStockData.travelingmerchant_stock?.status;
+            
+            if (state.travelingMerchantAlert && newMerchantStatus === "In Town" && oldMerchantStatus === "Not in town") {
+                 console.log(`ALERTA: ¡El Mercader Ambulante ha llegado!`);
+                 shouldPlaySound = true;
+            }
+
+            if (shouldPlaySound) playAlertSound();
+        }
+
+        function playAlertSound() {
+            dom.alertSound.currentTime = 0;
+            dom.alertSound.play().catch(e => console.error("Error al reproducir sonido:", e));
+        }
+
+        // --- CONTADORES REGRESIVOS ---
+        
+        function formatTime(ms) {
+            if (ms <= 0) return "Terminado";
+            const s = Math.floor(ms / 1000);
+            const m = Math.floor(s / 60);
+            const h = Math.floor(m / 60);
+            const d = Math.floor(h / 24);
+
+            const parts = [];
+            if (d > 0) parts.push(`${d}d`);
+            if (h % 24 > 0) parts.push(`${h % 24}h`);
+            if (m % 60 > 0) parts.push(`${m % 60}m`);
+            if (s % 60 > 0 && d === 0) parts.push(`${s % 60}s`); // Solo mostrar segundos si falta menos de un día
+
+            return parts.join(' ');
+        }
+        
+        function startCountdown(element) {
+            const endDate = new Date(element.dataset.endDate);
+            if (isNaN(endDate)) return;
+
+            const update = () => {
+                const remaining = endDate - new Date();
+                if (remaining <= 0) {
+                    element.textContent = "Terminado";
+                    // Encontrar y eliminar el timer del array
+                    const timerIndex = state.countdownTimers.findIndex(t => t.element === element);
+                    if (timerIndex > -1) {
+                         clearInterval(state.countdownTimers[timerIndex].intervalId);
+                         state.countdownTimers.splice(timerIndex, 1);
+                    }
+                } else {
+                    element.textContent = formatTime(remaining);
+                }
+            };
+            
+            update(); // llamada inicial
+            const intervalId = setInterval(update, 1000);
+            state.countdownTimers.push({ intervalId, element });
+        }
+        
+        function startAllCountdowns() {
+            document.querySelectorAll('.item-countdown').forEach(startCountdown);
+        }
+
+        function clearAllCountdowns() {
+            state.countdownTimers.forEach(timer => clearInterval(timer.intervalId));
+            state.countdownTimers = [];
+        }
+        
+        // --- MODAL DE INFORMACIÓN ---
+
+        async function showItemInfoModal(itemId) {
+            dom.modal.classList.add('visible');
+            dom.modalTitle.textContent = 'Cargando...';
+            dom.modalBody.innerHTML = '<p>Obteniendo detalles del ítem...</p>';
+
+            try {
+                let itemInfo;
+                if (state.itemInfoCache.has(itemId)) {
+                    itemInfo = state.itemInfoCache.get(itemId);
+                } else {
+                    const response = await fetch(`${API_ROUTES.info}${itemId}`);
+                    handleRateLimit(response);
+                    if (!response.ok) throw new Error('No se pudo obtener la información.');
+                    itemInfo = await response.json();
+                    state.itemInfoCache.set(itemId, itemInfo);
+                }
+                
+                dom.modalTitle.textContent = itemInfo.display_name;
+                dom.modalBody.innerHTML = `
+                    <p>${itemInfo.description || 'Sin descripción.'}</p>
+                    <p><strong>Rareza:</strong> ${itemInfo.rarity || 'N/A'}</p>
+                    <p><strong>Precio de venta:</strong> ${itemInfo.price ? `${itemInfo.price} ${itemInfo.currency}` : 'N/A'}</p>
+                    <p><strong>Visto por última vez:</strong> ${itemInfo.last_seen ? new Date(itemInfo.last_seen).toLocaleString() : 'N/A'}</p>
+                `;
+
+            } catch (error) {
+                console.error("Error al mostrar info del ítem:", error);
+                dom.modalBody.innerHTML = `<p style="color: var(--error-color);">${error.message}</p>`;
+            }
+        }
+        
+        function hideItemInfoModal() {
+            dom.modal.classList.remove('visible');
+        }
+
+        // --- MANEJO DE ERRORES EN UI ---
+        
+        function displayError(message) {
+            dom.errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+
+        function clearError() {
+            dom.errorContainer.innerHTML = '';
+        }
+
+        // --- INICIAR LA APP ---
+        initializeApp();
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grow A Garden - Monitor de Stock</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Variables CSS para temas */
+        :root {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --border-color: #e0e0e0;
+            --accent-color: #4CAF50;
+            --accent-hover: #45a049;
+            --warning-color: #ff9800;
+            --error-color: #f44336;
+            --shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-card: #333333;
+            --text-primary: #ffffff;
+            --text-secondary: #cccccc;
+            --border-color: #555555;
+            --accent-color: #66BB6A;
+            --accent-hover: #5cb85c;
+            --warning-color: #ffb74d;
+            --error-color: #e57373;
+            --shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            transition: all 0.3s ease;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-card);
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--error-color);
+            transition: background 0.3s ease;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-color);
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-secondary);
+        }
+
+        /* Contenedor principal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Navegación de pestañas */
+        .tabs {
+            display: flex;
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 0.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            overflow-x: auto;
+        }
+
+        .tab {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem 1rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            background: var(--bg-secondary);
+        }
+
+        /* Contenido de pestañas */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Secciones de stock */
+        .stock-section {
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Tarjetas de ítems */
+        .item-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+
+        .item-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .item-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 1px solid var(--border-color);
+        }
+
+        .item-info h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .item-quantity {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .item-timer {
+            font-size: 0.85rem;
+            color: var(--warning-color);
+            font-weight: 500;
+            margin-bottom: 0.75rem;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-danger {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        /* Panel de alertas */
+        .alerts-panel {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 2rem;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .volume-slider {
+            flex: 1;
+            max-width: 200px;
+        }
+
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .alert-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        /* Sección de clima */
+        .weather-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .weather-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+
+        .weather-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 0.5rem;
+            border-radius: 8px;
+        }
+
+        /* Loading spinner */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error message */
+        .error-message {
+            background: var(--error-color);
+            color: white;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header {
+                padding: 1rem;
+            }
+
+            .header-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .items-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-direction: column;
+            }
+
+            .tab {
+                flex: none;
+            }
+        }
+
+        /* Animaciones */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-seedling"></i>
+                Grow A Garden Monitor
+            </div>
+            <div class="header-controls">
+                <div class="status-indicator">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="connectionStatus">Desconectado</span>
+                </div>
+                <div class="status-indicator">
+                    <i class="fas fa-clock"></i>
+                    <span id="lastUpdate">Nunca</span>
+                </div>
+                <button class="theme-toggle" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenedor principal -->
+    <div class="container">
+        <!-- Navegación de pestañas -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="stock">
+                <i class="fas fa-store"></i> Stock
+            </button>
+            <button class="tab" data-tab="alerts">
+                <i class="fas fa-bell"></i> Alertas
+            </button>
+            <button class="tab" data-tab="weather">
+                <i class="fas fa-cloud-sun"></i> Clima
+            </button>
+        </nav>
+
+        <!-- Pestaña de Stock -->
+        <div class="tab-content active" id="stock">
+            <div id="stockContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Alertas -->
+        <div class="tab-content" id="alerts">
+            <div class="alerts-panel">
+                <h2>Configuración de Alertas</h2>
+                
+                <div class="volume-control">
+                    <i class="fas fa-volume-up"></i>
+                    <input type="range" id="volumeSlider" class="volume-slider" min="0" max="100" value="50">
+                    <span id="volumeValue">50%</span>
+                </div>
+
+                <div>
+                    <label>
+                        <input type="checkbox" id="travelingMerchantAlert">
+                        Alerta de Traveling Merchant
+                    </label>
+                </div>
+
+                <h3>Alertas Activas</h3>
+                <div id="activeAlerts">
+                    <p>No hay alertas configuradas</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Clima -->
+        <div class="tab-content" id="weather">
+            <div class="section-title">
+                <i class="fas fa-cloud-sun"></i>
+                Clima Actual
+            </div>
+            <div id="weatherContainer">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para detalles de ítems -->
+    <div class="modal" id="itemModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Detalles del Ítem</h3>
+                <button class="modal-close" id="modalClose">×</button>
+            </div>
+            <div id="modalBody">
+                <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio para alertas -->
+    <audio id="alertSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmsdBzuB0PLQdCEFK4DO8dqNOApOq+H3uGQdBiaH0vXGdyUHKnrJ8N2NOwkSUqzh7alSEgiI2+rDdygEQoXN8duKOQkleb3o63FUFAYM8UFEJT0EJoK95vO7aCIHsVbhLi++jA0JsqjFgkRMUmBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQA==" type="audio/wav">
+    </audio>
+
+    <script>
+        // Configuración global
+        const API_BASE = 'https://api.joshlei.com/v2/growagarden';
+        const UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutos
+        
+        // Estado de la aplicación
+        let appState = {
+            stock: null,
+            weather: null,
+            alerts: JSON.parse(localStorage.getItem('gardenAlerts') || '[]'),
+            volume: parseInt(localStorage.getItem('gardenVolume') || '50'),
+            theme: localStorage.getItem('gardenTheme') || 'light',
+            travelingMerchantAlert: JSON.parse(localStorage.getItem('travelingMerchantAlert') || 'false'),
+            lastUpdate: null,
+            isConnected: false
+        };
+
+        // Elementos del DOM
+        const elements = {
+            statusDot: document.getElementById('statusDot'),
+            connectionStatus: document.getElementById('connectionStatus'),
+            lastUpdate: document.getElementById('lastUpdate'),
+            themeToggle: document.getElementById('themeToggle'),
+            stockContainer: document.getElementById('stockContainer'),
+            weatherContainer: document.getElementById('weatherContainer'),
+            volumeSlider: document.getElementById('volumeSlider'),
+            volumeValue: document.getElementById('volumeValue'),
+            travelingMerchantAlert: document.getElementById('travelingMerchantAlert'),
+            activeAlerts: document.getElementById('activeAlerts'),
+            itemModal: document.getElementById('itemModal'),
+            modalTitle: document.getElementById('modalTitle'),
+            modalBody: document.getElementById('modalBody'),
+            modalClose: document.getElementById('modalClose'),
+            alertSound: document.getElementById('alertSound')
+        };
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            setupEventListeners();
+            loadData();
+            setInterval(loadData, UPDATE_INTERVAL);
+        });
+
+        function initializeApp() {
+            // Aplicar tema
+            document.documentElement.setAttribute('data-theme', appState.theme);
+            elements.themeToggle.innerHTML = appState.theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            
+            // Configurar volumen
+            elements.volumeSlider.value = appState.volume;
+            elements.volumeValue.textContent = appState.volume + '%';
+            elements.alertSound.volume = appState.volume / 100;
+            
+            // Configurar alerta de traveling merchant
+            elements.travelingMerchantAlert.checked = appState.travelingMerchantAlert;
+            
+            // Renderizar alertas activas
+            renderActiveAlerts();
+        }
+
+        function setupEventListeners() {
+            // Cambio de tema
+            elements.themeToggle.addEventListener('click', toggleTheme);
+            
+            // Control de volumen
+            elements.volumeSlider.addEventListener('input', function() {
+                appState.volume = parseInt(this.value);
+                elements.volumeValue.textContent = appState.volume + '%';
+                elements.alertSound.volume = appState.volume / 100;
+                localStorage.setItem('gardenVolume', appState.volume);
+            });
+            
+            // Alerta de traveling merchant
+            elements.travelingMerchantAlert.addEventListener('change', function() {
+                appState.travelingMerchantAlert = this.checked;
+                localStorage.setItem('travelingMerchantAlert', JSON.stringify(this.checked));
+            });
+            
+            // Navegación de pestañas
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    switchTab(this.dataset.tab);
+                });
+            });
+            
+            // Modal
+            elements.modalClose.addEventListener('click', closeModal);
+            elements.itemModal.addEventListener('click', function(e) {
+                if (e.target === this) closeModal();
+            });
+        }
+
+        function toggleTheme() {
+            appState.theme = appState.theme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', appState.theme);
+            elements.themeToggle.innerHTML = appState.theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            localStorage.setItem('gardenTheme', appState.theme);
+        }
+
+        function switchTab(tabName) {
+            // Actualizar pestañas
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.tab === tabName);
+            });
+            
+            // Actualizar contenido
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.toggle('active', content.id === tabName);
+            });
+        }
+
+        async function loadData() {
+            try {
+                updateConnectionStatus(true);
+                
+                // Cargar stock y clima en paralelo
+                const [stockData, weatherData] = await Promise.all([
+                    fetchWithRetry(`${API_BASE}/stock`),
+                    fetchWithRetry(`${API_BASE}/weather`)
+                ]);
+                
+                // Verificar alertas antes de actualizar
+                if (appState.stock) {
+                    checkAlerts(stockData);
+                }
+                
+                appState.stock = stockData;
+                appState.weather = weatherData;
+                appState.lastUpdate = new Date();
+                
+                renderStock();
+                renderWeather();
+                updateLastUpdateTime();
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                updateConnectionStatus(false);
+                showError('Error al cargar datos: ' + error.message);
+            }
+        }
+
+        async function fetchWithRetry(url, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url);
+                    
+                    if (response.status === 429) {
+                        const retryAfter = response.headers.get('Retry-After') || 60;
+                        throw new Error(`Demasiadas peticiones. Reintenta en ${retryAfter} segundos.`);
+                    }
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    return await response.json();
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+            }
+        }
+
+        function updateConnectionStatus(connected) {
+            appState.isConnected = connected;
+            elements.statusDot.classList.toggle('connected', connected);
+            elements.connectionStatus.textContent = connected ? 'Conectado' : 'Desconectado';
+        }
+
+        function updateLastUpdateTime() {
+            if (appState.lastUpdate) {
+                elements.lastUpdate.textContent = appState.lastUpdate.toLocaleTimeString();
+            }
+        }
+
+        function renderStock() {
+            if (!appState.stock) return;
+            
+            const categories = [
+                { key: 'seed_stock', title: 'Semillas', icon: 'fas fa-seedling' },
+                { key: 'gear_stock', title: 'Equipamiento', icon: 'fas fa-tools' },
+                { key: 'egg_stock', title: 'Huevos', icon: 'fas fa-egg' },
+                { key: 'cosmetic_stock', title: 'Cosméticos', icon: 'fas fa-palette' },
+                { key: 'eventshop_stock', title: 'Tienda de Eventos', icon: 'fas fa-calendar-star' },
+                { key: 'travelingmerchant_stock', title: 'Comerciante Viajero', icon: 'fas fa-route' }
+            ];
+            
+            let html = '';
+            
+            categories.forEach(category => {
+                const items = appState.stock[category.key] || [];
+                if (items.length === 0) return;
+                
+                html += `
+                    <div class="stock-section fade-in">
+                        <div class="section-title">
+                            <i class="${category.icon}"></i>
+                            ${category.title}
+                        </div>
+                        <div class="items-grid">
+                            ${items.map(item => renderItemCard(item)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            elements.stockContainer.innerHTML = html || '<p>No hay items disponibles en el stock.</p>';
+        }
+
+        function renderItemCard(item) {
+            const timeLeft = calculateTimeLeft(item.Date_End);
+            const isInAlerts = appState.alerts.some(alert => alert.id === item.ID);
+            
+            return `
+                <div class="item-card" onclick="showItemDetails('${item.ID}')">
+                    <div class="item-header">
+                        <img src="${API_BASE}/image/${item.ID}" alt="${item.Display_Name}" class="item-icon" onerror="this.style.display='none'">
+                        <div class="item-info">
+                            <h3>${item.Display_Name}</h3>
+                            <div class="item-quantity">Cantidad: ${item.Quantity}</div>
+                        </div>
+                    </div>
+                    <div class="item-timer">${timeLeft}</div>
+                    <div class="item-actions">
+                        <button class="btn ${isInAlerts ? 'btn-danger' : 'btn-primary'}" onclick="event.stopPropagation(); toggleAlert('${item.ID}', '${item.Display_Name}')">
+                            <i class="fas ${isInAlerts ? 'fa-bell-slash' : 'fa-bell'}"></i>
+                            ${isInAlerts ? 'Quitar' : 'Alerta'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function calculateTimeLeft(endDate) {
+            if (!endDate) return 'Sin límite';
+            
+            const end = new Date(endDate);
+            const now = new Date();
+            const diff = end - now;
+            
+            if (diff <= 0) return 'Expirado';
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+            if (hours > 0) return `${hours}h ${minutes}m`;
+            return `${minutes}m`;
+        }
+
+        function renderWeather() {
+            if (!appState.weather) return;
+            
+            const activeWeather = appState.weather.filter(w => w.Active);
+            
+            if (activeWeather.length === 0) {
+                elements.weatherContainer.innerHTML = '<p>No hay clima activo actualmente.</p>';
+                return;
+            }
+            
+            const html = `
+                <div class="weather-grid fade-in">
+                    ${activeWeather.map(weather => `
+                        <div class="weather-card">
+                            <img src="${API_BASE}/image/${weather.ID}" alt="${weather.Display_Name}" class="weather-icon" onerror="this.style.display='none'">
+                            <h3>${weather.Display_Name}</h3>
+                            <div class="item-timer">${calculateTimeLeft(weather.Date_End)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            elements.weatherContainer.innerHTML = html;
+        }
+
+        function toggleAlert(itemId, itemName) {
+            const existingIndex = appState.alerts.findIndex(alert => alert.id === itemId);
+            
+            if (existingIndex >= 0) {
+                appState.alerts.splice(existingIndex, 1);
+            } else {
+                appState.alerts.push({
+                    id: itemId,
+                    name: itemName,
+                    dateAdded: new Date().toISOString()
+                });
+            }
+            
+            localStorage.setItem('gardenAlerts', JSON.stringify(appState.alerts));
+            renderActiveAlerts();
+            renderStock(); // Re-render para actualizar botones
+        }
+
+        function renderActiveAlerts() {
+            if (appState.alerts.length === 0) {
+                elements.activeAlerts.innerHTML = '<p>No hay alertas configuradas</p>';
+                return;
+            }
+            
+            const html = appState.alerts.map(alert => `
+                <div class="alert-item">
+                    <div>
+                        <strong>${alert.name}</strong>
+                        <br>
+                        <small>Añadido: ${new Date(alert.dateAdded).toLocaleDateString()}</small>
+                    </div>
+                    <button class="btn btn-danger" onclick="removeAlert('${alert.id}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+            
+            elements.activeAlerts.innerHTML = html;
+        }
+
+        function removeAlert(itemId) {
+            appState.alerts = appState.alerts.filter(alert => alert.id !== itemId);
+            localStorage.setItem('gardenAlerts', JSON.stringify(appState.alerts));
+            renderActiveAlerts();
+            renderStock();
+        }
+
+        function checkAlerts(newStock) {
+            if (!appState.stock || appState.alerts.length === 0) return;
+            
+            // Verificar alertas de ítems específicos
+            appState.alerts.forEach(alert => {
+                const wasAvailable = isItemAvailable(appState.stock, alert.id);
+                const isNowAvailable = isItemAvailable(newStock, alert.id);
+                
+                if (!wasAvailable && isNowAvailable) {
+                    showAlert(`¡${alert.name} está disponible!`);
+                    playAlertSound();
+                }
+            });
+            
+            // Verificar alerta de Traveling Merchant
+            if (appState.travelingMerchantAlert) {
+                const wasActive = isTravelingMerchantActive(appState.stock);
+                const isNowActive = isTravelingMerchantActive(newStock);
+                
+                if (!wasActive && isNowActive) {
+                    showAlert('¡El Comerciante Viajero está activo!');
+                    playAlertSound();
+                }
+            }
+        }
+
+        function isItemAvailable(stock, itemId) {
+            const categories = ['seed_stock', 'gear_stock', 'egg_stock', 'cosmetic_stock', 'eventshop_stock', 'travelingmerchant_stock'];
+            return categories.some(category => 
+                stock[category] && stock[category].some(item => item.ID === itemId && item.Quantity > 0)
+            );
+        }
+
+        function isTravelingMerchantActive(stock) {
+            return stock.travelingmerchant_stock && stock.travelingmerchant_stock.length > 0;
+        }
+
+        function showAlert(message) {
+            // Crear notificación visual
+            const notification = document.createElement('div');
+            notification.className = 'alert-notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--accent-color);
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 5px;
+                box-shadow: var(--shadow);
+                z-index: 10000;
+                animation: slideIn 0.3s ease-out;
+            `;
+            notification.innerHTML = `
+                <i class="fas fa-bell"></i>
+                ${message}
+            `;
+            
+            // Añadir animación CSS si no existe
+            if (!document.querySelector('#alert-animations')) {
+                const style = document.createElement('style');
+                style.id = 'alert-animations';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                    @keyframes slideOut {
+                        from { transform: translateX(0); opacity: 1; }
+                        to { transform: translateX(100%); opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.appendChild(notification);
+            
+            // Remover después de 5 segundos
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 5000);
+            
+            // Solicitar permiso y mostrar notificación del navegador
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Grow A Garden', {
+                    body: message,
+                    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234CAF50"><path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z"/></svg>'
+                });
+            }
+        }
+
+        function playAlertSound() {
+            if (appState.volume > 0) {
+                elements.alertSound.currentTime = 0;
+                elements.alertSound.play().catch(e => console.log('No se pudo reproducir el sonido:', e));
+            }
+        }
+
+        async function showItemDetails(itemId) {
+            elements.itemModal.classList.add('active');
+            elements.modalBody.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+            
+            try {
+                const itemInfo = await fetchWithRetry(`${API_BASE}/info/${itemId}`);
+                
+                elements.modalTitle.textContent = itemInfo.Display_Name || 'Detalles del Ítem';
+                
+                const html = `
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <img src="${API_BASE}/image/${itemId}" alt="${itemInfo.Display_Name}" 
+                             style="width: 80px; height: 80px; border-radius: 10px; border: 1px solid var(--border-color);"
+                             onerror="this.style.display='none'">
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <strong>Nombre:</strong> ${itemInfo.Display_Name || 'N/A'}
+                    </div>
+                    
+                    ${itemInfo.Description ? `
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Descripción:</strong><br>
+                            ${itemInfo.Description}
+                        </div>
+                    ` : ''}
+                    
+                    ${itemInfo.Price ? `
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Precio:</strong> ${itemInfo.Price}
+                        </div>
+                    ` : ''}
+                    
+                    ${itemInfo.Rarity ? `
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Rareza:</strong> ${itemInfo.Rarity}
+                        </div>
+                    ` : ''}
+                    
+                    ${itemInfo.Type ? `
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Tipo:</strong> ${itemInfo.Type}
+                        </div>
+                    ` : ''}
+                    
+                    ${itemInfo.Last_Seen ? `
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Última vez visto:</strong> ${new Date(itemInfo.Last_Seen).toLocaleString()}
+                        </div>
+                    ` : ''}
+                `;
+                
+                elements.modalBody.innerHTML = html;
+                
+            } catch (error) {
+                elements.modalBody.innerHTML = `
+                    <div class="error-message">
+                        Error al cargar detalles: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function closeModal() {
+            elements.itemModal.classList.remove('active');
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            errorDiv.style.position = 'fixed';
+            errorDiv.style.top = '20px';
+            errorDiv.style.left = '50%';
+            errorDiv.style.transform = 'translateX(-50%)';
+            errorDiv.style.zIndex = '10000';
+            
+            document.body.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        // Solicitar permisos de notificación al cargar
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        // Manejo de visibilidad de la página para pausar/reanudar actualizaciones
+        let updateInterval;
+        
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Página oculta - pausar actualizaciones frecuentes
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                }
+            } else {
+                // Página visible - reanudar actualizaciones
+                loadData(); // Actualización inmediata
+                updateInterval = setInterval(loadData, UPDATE_INTERVAL);
+            }
+        });
+
+        // Configurar intervalo inicial
+        updateInterval = setInterval(loadData, UPDATE_INTERVAL);
+
+        // Service Worker para funcionalidad offline (opcional)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:text/javascript,console.log("SW registered")')
+                .catch(e => console.log('Service Worker registration failed'));
+        }
+
+        // Manejo de errores globales
+        window.addEventListener('error', function(e) {
+            console.error('Error global:', e.error);
+            showError('Ha ocurrido un error inesperado');
+        });
+
+        window.addEventListener('unhandledrejection', function(e) {
+            console.error('Promise rejection:', e.reason);
+            showError('Error de conexión');
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
