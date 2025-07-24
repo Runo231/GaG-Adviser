@@ -667,10 +667,9 @@
         }
 
         function renderWeather(data) {
-		console.log(data);
             const activeWeathers = data.weather.filter(w => w.active);
             if(activeWeathers.length === 0) {
-                dom.weatherContainer.innerHTML = `<p style="padding: 1.5rem; color: var(--text-secondary);">No hay climas activos.</p>`;
+                dom.weatherContainer.innerHTML = `<p style="padding: 1; color: var(--text-secondary);">No hay climas activos.</p>`;
                 return;
             }
             
@@ -754,13 +753,12 @@
 
             const newItems = new Set();
             for (const key in CATEGORY_MAP) {
-			console.log(newStockData[key]);
                 if(newStockData[key] && Array.isArray(newStockData[key])) newStockData[key].forEach(item => newItems.add(item.item_id));
             }
 
             const oldItems = new Set();
              for (const key in CATEGORY_MAP) {
-                if(state.lastStockData[key]) state.lastStockData[key].forEach(item => oldItems.add(item.item_id));
+                if(state.lastStockData[key] && Array.isArray(state.lastStockData[key])) state.lastStockData[key].forEach(item => oldItems.add(item.item_id));
             }
             
             let shouldPlaySound = false;
