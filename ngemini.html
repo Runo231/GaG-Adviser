@@ -669,7 +669,7 @@
         function renderWeather(data) {
             const activeWeathers = data.weather.filter(w => w.active);
             if(activeWeathers.length === 0) {
-                dom.weatherContainer.innerHTML = `<p style="padding: 1; color: var(--text-secondary);">No hay climas activos.</p>`;
+                dom.weatherContainer.innerHTML = `<p style="padding: 1rem; color: var(--text-secondary);">No hay climas activos.</p>`;
                 return;
             }
             
