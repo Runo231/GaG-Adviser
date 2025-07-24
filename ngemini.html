@@ -446,7 +446,8 @@
             theme: 'light',
             lastStockData: null,
             itemInfoCache: new Map(),
-            countdownTimers: []
+            countdownTimers: [],
+            notifiedItems: [] // [{id, start, end}]
         };
 
         // --- REFERENCIAS A ELEMENTOS DEL DOM ---
@@ -494,34 +495,34 @@
             fetchData();
             startUpdateCycle();
         }
-		
-		function startUpdateCycle() {
-		  const now = new Date();
-		  const currentMs = now.getTime();
+        
+        function startUpdateCycle() {
+          const now = new Date();
+          const currentMs = now.getTime();
 
-		  // Calcula el siguiente múltiplo de 5 minutos
-		  const next5Min = new Date(now);
-		  next5Min.setSeconds(20);
-		  next5Min.setMilliseconds(0);
+          // Calcula el siguiente múltiplo de 5 minutos
+          const next5Min = new Date(now);
+          next5Min.setSeconds(20);
+          next5Min.setMilliseconds(0);
 
-		  const minutes = now.getMinutes();
-		  const nextModulo = (Math.floor(minutes / 5) + 1) * 5;
-		  next5Min.setMinutes(nextModulo);
+          const minutes = now.getMinutes();
+          const nextModulo = (Math.floor(minutes / 5) + 1) * 5;
+          next5Min.setMinutes(nextModulo);
 
-		  // Si ya pasamos el minuto XX:05:30, vamos al próximo
-		  if (next5Min.getTime() <= currentMs) {
-			next5Min.setMinutes(next5Min.getMinutes() + 5);
-		  }
+          // Si ya pasamos el minuto XX:05:30, vamos al próximo
+          if (next5Min.getTime() <= currentMs) {
+            next5Min.setMinutes(next5Min.getMinutes() + 5);
+          }
 
-		  const delay = next5Min.getTime() - currentMs;
+          const delay = next5Min.getTime() - currentMs;
 
-		  console.log("Esperando", Math.round(delay / 1000), "segundos para recargar...");
+          console.log("Esperando", Math.round(delay / 1000), "segundos para recargar...");
 
-		  setTimeout(() => {
-			fetchData(); // primer llamado
-			setInterval(fetchData, 5 * 60 * 1000); // cada 5 minutos
-		  }, delay);
-		}
+          setTimeout(() => {
+            fetchData(); // primer llamado
+            setInterval(fetchData, 5 * 60 * 1000); // cada 5 minutos
+          }, delay);
+        }
 
         // --- MANEJO DE ESTADO Y LOCALSTORAGE ---
 
@@ -530,6 +531,7 @@
             state.volume = parseFloat(localStorage.getItem('volume')) || 0.5;
             state.alerts = JSON.parse(localStorage.getItem('alerts')) || [];
             state.travelingMerchantAlert = localStorage.getItem('travelingMerchantAlert') === 'true';
+            state.notifiedItems = JSON.parse(localStorage.getItem('notifiedItems')) || [];
         }
 
         function saveStateToLocalStorage() {
@@ -537,6 +539,7 @@
             localStorage.setItem('volume', state.volume);
             localStorage.setItem('alerts', JSON.stringify(state.alerts));
             localStorage.setItem('travelingMerchantAlert', state.travelingMerchantAlert);
+            localStorage.setItem('notifiedItems', JSON.stringify(state.notifiedItems));
         }
 
         // --- MANEJO DE TEMA Y VOLUMEN ---
@@ -749,42 +752,84 @@
         }
         
         function checkForAlerts(newStockData) {
-            if (!state.lastStockData) return; // No comparar en la primera carga
-
-            const newItems = new Set();
+            // Recopilar ítems actuales por id y sus fechas
+            const currentItems = {};
             for (const key in CATEGORY_MAP) {
-                if(newStockData[key] && Array.isArray(newStockData[key])) newStockData[key].forEach(item => newItems.add(item.item_id));
+                if (newStockData[key] && Array.isArray(newStockData[key])) {
+                    newStockData[key].forEach(item => {
+                        currentItems[item.item_id] = {
+                            start: item.start_date_unix || null,
+                            end: item.end_date_unix || null,
+                            name: item.display_name
+                        };
+                    });
+                }
             }
 
-            const oldItems = new Set();
-             for (const key in CATEGORY_MAP) {
-                if(state.lastStockData[key] && Array.isArray(state.lastStockData[key])) state.lastStockData[key].forEach(item => oldItems.add(item.item_id));
-            }
-            
             let shouldPlaySound = false;
-            
+
             // 1. Chequear ítems en alerta
             state.alerts.forEach(alert => {
-                // Si el ítem está en la nueva data pero no en la antigua
-                if (newItems.has(alert.id) && !oldItems.has(alert.id)) {
-                    console.log(`ALERTA: ¡${alert.name} está disponible!`);
-                    shouldPlaySound = true;
+                const item = currentItems[alert.id];
+                if (item) {
+                    // Verificar si ya se notificó para este rango
+                    const alreadyNotified = state.notifiedItems.some(n => n.id === alert.id && n.start === item.start && n.end === item.end);
+                    if (!alreadyNotified) {
+                        console.log(`ALERTA: ¡${item.name} está disponible!`);
+                        state.notifiedItems.push({ id: alert.id, start: item.start, end: item.end });
+                        cleanNotifiedItems();
+                        shouldPlaySound = true;
+                    }
                 }
             });
 
             // 2. Chequear Mercader Ambulante
             const newMerchantStatus = newStockData.travelingmerchant_stock?.status;
-            const oldMerchantStatus = state.lastStockData.travelingmerchant_stock?.status;
-            
+            const oldMerchantStatus = state.lastStockData?.travelingmerchant_stock?.status;
             if (state.travelingMerchantAlert && newMerchantStatus === "In Town" && oldMerchantStatus === "Not in town") {
-                 console.log(`ALERTA: ¡El Mercader Ambulante ha llegado!`);
-                 shouldPlaySound = true;
+                console.log(`ALERTA: ¡El Mercader Ambulante ha llegado!`);
+                shouldPlaySound = true;
             }
 
-            if (shouldPlaySound) playAlertSound();
+            if (shouldPlaySound) {
+                playAlertSound();
+                saveStateToLocalStorage();
+            }
+
+            // En la primera carga, alertar de todo lo que esté en alerta y presente
+            if (!state.lastStockData) {
+                let firstLoadSound = false;
+                state.alerts.forEach(alert => {
+                    const item = currentItems[alert.id];
+                    if (item) {
+                        const alreadyNotified = state.notifiedItems.some(n => n.id === alert.id && n.start === item.start && n.end === item.end);
+                        if (!alreadyNotified) {
+                            console.log(`ALERTA (primera carga): ¡${item.name} está disponible!`);
+                            state.notifiedItems.push({ id: alert.id, start: item.start, end: item.end });
+                            cleanNotifiedItems();
+                            firstLoadSound = true;
+                        }
+                    }
+                });
+    
+                if (firstLoadSound) {
+                    playAlertSound();
+                    saveStateToLocalStorage();
+                }
+            }
+        }
+
+        // --- LIMPIEZA DE notifiedItems ---
+        function cleanNotifiedItems() {
+            if (state.notifiedItems.length >= 200) {
+                state.notifiedItems.splice(0, 100);
+            }
         }
 
         function playAlertSound() {
+            console.log("Reproduciendo sonido de alerta...");
+            dom.alertSound.volume = state.volume;
+
             dom.alertSound.currentTime = 0;
             dom.alertSound.play().catch(e => console.error("Error al reproducir sonido:", e));
         }
