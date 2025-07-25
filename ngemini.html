@@ -438,8 +438,17 @@
     </header>
 
     <main class="container">
+
         <div id="error-container"></div>
-        
+
+        <!-- Sección de alerta de ítems nuevos -->
+        <section id="new-alerted-items-section" class="section" style="display:none;margin-bottom:1.5rem;">
+            <div class="section-header">
+                <h2 class="section-title">¡Nuevo ítem disponible para comprar!</h2>
+            </div>
+            <div id="new-alerted-items-container" class="grid-container"></div>
+        </section>
+
         <section class="section">
             <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;">
                 <h2 class="section-title">Clima Actual</h2>
@@ -796,6 +805,7 @@
 
                 renderStock(stockData, justAlertedItemIds);
                 renderWeather(weatherData);
+                renderNewAlertedItemsSection(stockData, justAlertedItemIds);
 
             } catch (error) {
                 console.error('Error en fetchData:', error);
@@ -972,6 +982,49 @@
                     </button>
                 </div>
             `;
+        }
+
+        // Renderiza la sección de nuevos ítems alertados
+        function renderNewAlertedItemsSection(stockData, justAlertedItemIds) {
+            const section = document.getElementById('new-alerted-items-section');
+            const container = document.getElementById('new-alerted-items-container');
+            // Buscar los ítems alertados en el stock actual
+            let alertedItems = [];
+            for (const key in CATEGORY_MAP) {
+                if (stockData[key] && Array.isArray(stockData[key])) {
+                    stockData[key].forEach(item => {
+                        if (justAlertedItemIds.includes(item.item_id)) {
+                            alertedItems.push(item);
+                        }
+                    });
+                }
+            }
+            if (alertedItems.length > 0) {
+                section.style.display = '';
+                container.innerHTML = alertedItems.map(item => {
+                    // Solo mostrar la card, sin botón de alerta
+                    return `
+                        <div class="item-card alerted" data-item-id="${item.item_id}" data-item-name="${item.display_name}">
+                            <img src="${item.icon}" alt="${item.display_name}" class="item-image" loading="lazy">
+                            <div class="item-info">
+                                <p class="item-name">${item.display_name}</p>
+                                ${item.quantity ? `<p class="item-quantity">Cantidad: ${item.quantity}</p>` : ''}
+                                ${item.Date_End ? `<p class="item-countdown" data-end-date="${item.Date_End}">Calculando...</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                // Listeners para abrir modal de info
+                container.querySelectorAll('.item-card[data-item-id]').forEach(card => {
+                    card.addEventListener('click', () => {
+                        showItemInfoModal(card.dataset.itemId);
+                    });
+                });
+                startAllCountdowns();
+            } else {
+                section.style.display = 'none';
+                container.innerHTML = '';
+            }
         }
 
         function renderWeather(data) {
