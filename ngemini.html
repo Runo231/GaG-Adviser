@@ -652,7 +652,8 @@
                 const norm = n => (n||'').toLowerCase().replace(/\s+/g, '');
                 let changed = false;
                 state.alerts = state.alerts.map(alert => {
-                    if (!alert.id && alert.name) {
+                    // Si el id no existe o el id es igual al nombre (manual), buscar por nombre
+                    if ((!alert.id || norm(alert.id) === norm(alert.name)) && alert.name) {
                         const found = items.find(i => norm(i.display_name) === norm(alert.name));
                         if (found) {
                             changed = true;
@@ -1151,7 +1152,8 @@
             // No duplicar (ignorando mayúsculas y espacios)
             const norm = n => n.toLowerCase().replace(/\s+/g, '');
             if (state.alerts.some(a => norm(a.name||a.id||'') === norm(name))) return;
-            state.alerts.push({ name: name, id: null, icon: null });
+            // Para facilitar el borrado, asignar id igual al nombre
+            state.alerts.push({ name: name, id: name, icon: null });
             saveStateToLocalStorage();
             renderAlertList();
         }
@@ -1211,7 +1213,18 @@
         // --- LÓGICA DE ALERTAS ---
 
         function toggleAlert(itemId, itemName, buttonElement) {
-            const alertIndex = state.alerts.findIndex(alert => alert.id === itemId);
+            // Buscar por id, y si no, por nombre (normalizado) para manuales
+            const norm = n => (n||'').toLowerCase().replace(/\s+/g, '');
+            let alertIndex = state.alerts.findIndex(alert => {
+                if (alert.id === itemId) return true;
+                // Si es manual (id igual al nombre), buscar por nombre
+                if (alert.id && itemId && norm(alert.id) === norm(itemId)) return true;
+                // Si el id es null y el itemId es null, y el nombre coincide
+                if ((alert.id === null || alert.id === 'null') && (itemId === null || itemId === 'null')) {
+                    return norm(alert.name) === norm(itemName);
+                }
+                return false;
+            });
 
             if (alertIndex > -1) { // La alerta existe, la eliminamos
                 state.alerts.splice(alertIndex, 1);
@@ -1219,7 +1232,13 @@
                 let icon = '';
                 const found = state.allItems.find(i => i.item_id === itemId);
                 if (found) icon = found.icon;
-                state.alerts.push({ id: itemId, name: itemName, icon });
+                // Solo añadir si itemId no es null o si es manual y tiene nombre
+                if (itemId !== null && itemId !== 'null') {
+                    state.alerts.push({ id: itemId, name: itemName, icon });
+                } else if (itemName) {
+                    // Para manuales, id igual al nombre
+                    state.alerts.push({ id: itemName, name: itemName, icon: null });
+                }
             }
             saveStateToLocalStorage();
             renderAlertList();
