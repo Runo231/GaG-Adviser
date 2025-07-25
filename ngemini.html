@@ -6,6 +6,27 @@
     <title>Grow a Garden - Dashboard</title>
     
     <style>
+        /* Borde para ítems alertados */
+        .item-card.alerted, .category-modal .alerted-item {
+            border: 2.5px solid #ffd600 !important;
+            box-shadow: 0 0 0 2px #ffe06644;
+        }
+        /* Buscador en el modal de categoría */
+        .category-search-box {
+            width: 100%;
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            font-size: 1rem;
+            outline: none;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: border-color var(--transition-speed);
+        }
+        .category-search-box:focus {
+            border-color: var(--accent-color);
+        }
         /* 1. Variables y Tema */
         /* Botón moderno para ver todos los ítems de la categoría */
         .category-items-btn {
@@ -420,15 +441,18 @@
         <div id="error-container"></div>
         
         <section class="section">
-            <div class="section-header"><h2 class="section-title">Clima Actual</h2></div>
+            <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;">
+                <h2 class="section-title">Clima Actual</h2>
+                <button id="weather-fav-btn" class="category-items-btn" style="margin:0;min-width:unset;font-size:1rem;padding:0.4rem 1.2rem;">+ Filtro de Clima</button>
+            </div>
             <div id="weather-container" class="grid-container">
                 <p style="padding: 1.5rem; color: var(--text-secondary);">Cargando clima...</p>
             </div>
         </section>
 
-        <section class="section">
-            <div class="section-header"><h2 class="section-title">Configuración de Alertas</h2></div>
-            <div class="settings-panel">
+        <section class="section" id="alert-config-section">
+            <div class="section-header" id="alert-config-header" style="cursor:pointer;"><h2 class="section-title">Configuración de Alertas</h2></div>
+            <div class="settings-panel" id="alert-config-panel">
                 <div class="settings-group">
                     <h3>Mercader Ambulante</h3>
                     <div class="toggle-switch">
@@ -459,6 +483,99 @@
     
     <script>
     document.addEventListener('DOMContentLoaded', () => {
+        // --- FAVORITOS DE CLIMA ---
+        function showWeatherFavDialog() {
+        const allWeathers = state.allWeathers || [];
+
+        let modal = document.createElement('div');
+        modal.className = 'modal-overlay visible';
+        modal.style.zIndex = '2000';
+
+        modal.innerHTML = `
+            <div class="modal-content category-modal">
+                <div class="modal-header">
+                    <h2 class="modal-title">Filtrar Climas Favoritos</h2>
+                    <button class="modal-close" id="close-weather-dialog">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+                        ${allWeathers.length === 0
+                            ? '<p>No hay climas disponibles.</p>'
+                            : allWeathers.map(w => {
+                                const isActive = state.weatherFavs && state.weatherFavs.includes(w.weather_name);
+                                const minutes = Math.floor(w.duration / 60);
+                                const seconds = String(w.duration % 60).padStart(2, '0');
+                                return `
+                                    <button class="toggle-weather-fav-btn"
+                                        data-weather="${w.weather_name}"
+                                        style="
+                                            display: flex;
+                                            align-items: center;
+                                            gap: 0.5rem;
+                                            padding: 0.6rem 1rem;
+                                            border-radius: 18px;
+                                            font-weight: 600;
+                                            background: ${isActive ? 'var(--success-color)' : 'var(--accent-color)'};
+                                            color: white;
+                                            border: none;
+                                            cursor: pointer;
+                                            min-width: 250px;
+                                        ">
+                                        <img src="${w.icon}" alt="${w.weather_name}" style="width: 24px; height: 24px;" />
+                                        <span class="weather-name" style="flex: 1;">${isActive ? '✓ ' : ''}${w.weather_name}</span>
+                                        <span style="font-size: 0.9em; opacity: 0.8;">${minutes}:${seconds}</span>
+                                    </button>
+                                `;
+                            }).join('')
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+
+        // Cerrar modal
+        modal.querySelector('#close-weather-dialog').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+        // Toggle favoritos sin destruir estructura del botón
+        modal.querySelectorAll('.toggle-weather-fav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const w = btn.dataset.weather;
+                const idx = state.weatherFavs.indexOf(w);
+                const isNowActive = idx === -1;
+
+                if (isNowActive) state.weatherFavs.push(w);
+                else state.weatherFavs.splice(idx, 1);
+
+                saveStateToLocalStorage();
+
+                // Actualizar color de fondo
+                btn.style.background = isNowActive ? 'var(--success-color)' : 'var(--accent-color)';
+
+                // Actualizar solo el texto del span.weather-name
+                const nameSpan = btn.querySelector('.weather-name');
+                if (nameSpan) {
+                    nameSpan.textContent = (isNowActive ? '✓ ' : '') + w;
+                }
+            });
+        });
+    }
+
+
+        // --- MINIMIZAR SECCIÓN DE ALERTAS ---
+        function setAlertConfigMinimized(minimized) {
+            const panel = document.getElementById('alert-config-panel');
+            if (minimized) {
+                panel.style.display = 'none';
+            } else {
+                panel.style.display = '';
+            }
+            localStorage.setItem('alertConfigMinimized', minimized ? '1' : '0');
+        }
+        function getAlertConfigMinimized() {
+            return localStorage.getItem('alertConfigMinimized') === '1';
+        }
         
         // --- REFERENCIAS A ELEMENTOS DEL DOM ---
         const dom = {
@@ -515,6 +632,7 @@
         };
         
         let state = {
+            weatherFavs: [], // Climas favoritos
             alerts: [],
             travelingMerchantAlert: false,
             volume: 0.5,
@@ -523,7 +641,8 @@
             itemInfoCache: new Map(),
             countdownTimers: [],
             notifiedItems: [], // [{id, start, end}]
-            allItems: [] // Todos los ítems del endpoint /info
+            allItems: [], // Todos los ítems del endpoint /info,
+            allWeathers: [] // Todos los climas posibles
         };
 
         // --- FUNCIONES DE INICIALIZACIÓN Y CONFIGURACIÓN ---
@@ -532,6 +651,16 @@
          * Carga el estado desde localStorage y configura los listeners iniciales.
          */
         function initializeApp() {
+            // Minimizar sección de alertas si corresponde
+            setAlertConfigMinimized(getAlertConfigMinimized());
+            // Listener para minimizar/expandir sección de alertas (solo sobre el header o el título)
+            document.getElementById('alert-config-header').addEventListener('click', (e) => {
+                if (e.target !== e.currentTarget && !e.target.classList.contains('section-title')) return;
+                const minimized = !getAlertConfigMinimized();
+                setAlertConfigMinimized(minimized);
+            });
+            // Listener para filtro de clima
+            document.getElementById('weather-fav-btn').addEventListener('click', showWeatherFavDialog);
             loadStateFromLocalStorage();
             applyTheme();
             applyVolume();
@@ -587,6 +716,7 @@
         // --- MANEJO DE ESTADO Y LOCALSTORAGE ---
 
         function loadStateFromLocalStorage() {
+            state.weatherFavs = JSON.parse(localStorage.getItem('weatherFavs') || '[]');
             state.theme = localStorage.getItem('theme') || 'light';
             state.volume = parseFloat(localStorage.getItem('volume')) || 0.5;
             state.alerts = JSON.parse(localStorage.getItem('alerts')) || [];
@@ -595,6 +725,7 @@
         }
 
         function saveStateToLocalStorage() {
+            localStorage.setItem('weatherFavs', JSON.stringify(state.weatherFavs));
             localStorage.setItem('theme', state.theme);
             localStorage.setItem('volume', state.volume);
             localStorage.setItem('alerts', JSON.stringify(state.alerts));
@@ -652,12 +783,18 @@
                 const stockData = await stockResponse.json();
                 const weatherData = await weatherResponse.json();
 
+                if (weatherData && Array.isArray(weatherData.weather)) {
+                    state.allWeathers = Array.from(new Set(weatherData.weather));
+                } else {
+                    state.allWeathers = [];
+                }
+
                 updateStatus(true);
-                
-                checkForAlerts(stockData);
+
+                const justAlertedItemIds = checkForAlerts(stockData);
                 state.lastStockData = stockData;
 
-                renderStock(stockData);
+                renderStock(stockData, justAlertedItemIds);
                 renderWeather(weatherData);
 
             } catch (error) {
@@ -690,6 +827,8 @@
 
         function renderStock(data) {
             dom.stockSectionsContainer.innerHTML = '';
+            // Accept justAlertedItemIds as optional second argument
+            let justAlertedItemIds = arguments[1] || [];
             for (const categoryKey in CATEGORY_MAP) {
                 let typeFilter = null;
                 switch (categoryKey) {
@@ -712,7 +851,7 @@
                         dialogBtnHtml = `<button id="open-dialog-btn-${categoryKey}" class="category-items-btn">Ver todos los ítems de la categoría</button>`;
                     }
 
-                    const itemsHtml = data[categoryKey].map(item => createItemCard(item, categoryKey)).join('');
+                    const itemsHtml = data[categoryKey].map(item => createItemCard(item, categoryKey, justAlertedItemIds)).join('');
 
                     sectionEl.innerHTML = `
                         <div class="section-header"><h2 class="section-title">${categoryName}</h2></div>
@@ -817,9 +956,11 @@
         
         function createItemCard(item, category) {
             const isAlertActive = state.alerts.some(alert => alert.id === item.item_id);
+            const justAlertedItemIds = arguments[2] || [];
+            const isJustAlerted = justAlertedItemIds.includes(item.item_id);
 
             return `
-                <div class="item-card" data-item-id="${item.item_id}" data-item-name="${item.display_name}">
+                <div class="item-card${isJustAlerted ? ' alerted' : ''}" data-item-id="${item.item_id}" data-item-name="${item.display_name}">
                     <img src="${item.icon}" alt="${item.display_name}" class="item-image" loading="lazy">
                     <div class="item-info">
                         <p class="item-name">${item.display_name}</p>
@@ -841,8 +982,9 @@
             }
             
             dom.weatherContainer.innerHTML = activeWeathers.map(weather => {
+                const isFav = state.weatherFavs && state.weatherFavs.includes(weather.weather_name);
                 return `
-                     <div class="item-card" style="cursor: default;">
+                     <div class="item-card${isFav ? ' alerted' : ''}" style="cursor: default;">
                         <img src="${weather.icon}" alt="${weather.weather_name}" class="item-image">
                         <div class="item-info">
                             <p class="item-name">${weather.weather_name}</p>
@@ -930,6 +1072,17 @@
         }
         
         function checkForAlerts(newStockData) {
+            const justAlertedItemIds = [];
+            // 0. Chequear climas favoritos
+            let shouldPlayWeatherSound = false;
+            if (state.weatherFavs && Array.isArray(state.weatherFavs)) {
+                const activeWeathers = newStockData.weather?.filter(w => w.active) || [];
+                activeWeathers.forEach(weather => {
+                    if (state.weatherFavs.includes(weather.weather_name)) {
+                        shouldPlayWeatherSound = true;
+                    }
+                });
+            }
             // Recopilar ítems actuales por id y sus fechas
             const currentItems = {};
             for (const key in CATEGORY_MAP) {
@@ -957,6 +1110,7 @@
                         state.notifiedItems.push({ id: alert.id, start: item.start, end: item.end });
                         cleanNotifiedItems();
                         shouldPlaySound = true;
+                        justAlertedItemIds.push(alert.id);
                     }
                 }
             });
@@ -969,7 +1123,8 @@
                 shouldPlaySound = true;
             }
 
-            if (shouldPlaySound) {
+            // Si hay clima favorito activo, reproducir sonido aunque no haya otros triggers
+            if (shouldPlaySound || shouldPlayWeatherSound) {
                 playAlertSound();
                 saveStateToLocalStorage();
             }
@@ -986,15 +1141,17 @@
                             state.notifiedItems.push({ id: alert.id, start: item.start, end: item.end });
                             cleanNotifiedItems();
                             firstLoadSound = true;
+                            justAlertedItemIds.push(alert.id);
                         }
                     }
                 });
-    
-                if (firstLoadSound) {
+                // También reproducir sonido si hay clima favorito activo en la primera carga
+                if (firstLoadSound || shouldPlayWeatherSound) {
                     playAlertSound();
                     saveStateToLocalStorage();
                 }
             }
+            return justAlertedItemIds;
         }
 
         // --- LIMPIEZA DE notifiedItems ---
