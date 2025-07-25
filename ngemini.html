@@ -472,6 +472,7 @@
             <div class="section-header" id="alert-config-header" style="cursor:pointer;"><h2 class="section-title">Configuración de Alertas</h2></div>
             <div class="settings-panel" id="alert-config-panel">
                 <div class="settings-group">
+                <button id="open-dialog-btn-all-items" class="category-items-btn" style="margin-top:0;margin-bottom:1rem;">Ver todos los ítems</button>
                     <h3>Mercader Ambulante</h3>
                     <div class="toggle-switch">
                         <span>Notificar cuando aparezca</span>
@@ -623,7 +624,8 @@
             modalTitle: document.getElementById('modal-title'),
             modalBody: document.getElementById('modal-body'),
             modalCloseBtn: document.getElementById('modal-close-btn'),
-            categoryDialog: null
+            categoryDialog: null,
+            allItemsDialogBtn: null
         };
 
         // --- VARIABLES Y CONSTANTES GLOBALES ---
@@ -691,6 +693,13 @@
             });
             // Listener para filtro de clima
             document.getElementById('weather-fav-btn').addEventListener('click', showWeatherFavDialog);
+            // Listener para ver todos los ítems (sin filtrar)
+            dom.allItemsDialogBtn = document.getElementById('open-dialog-btn-all-items');
+            if (dom.allItemsDialogBtn) {
+                dom.allItemsDialogBtn.addEventListener('click', () => {
+                    showCategoryDialog('all_items', state.allItems);
+                });
+            }
             loadStateFromLocalStorage();
             applyTheme();
             applyVolume();
@@ -904,8 +913,11 @@
                     }
                 }
             }
+
             addCardListeners();
-        // Modal para mostrar todos los ítems de la categoría
+        }
+
+        // Modal para mostrar todos los ítems de la categoría o todos los ítems
         function showCategoryDialog(categoryKey, items) {
             // Ordenar por precio ascendente, precio 0 al final
             items = items.slice().sort((a, b) => {
@@ -960,10 +972,11 @@
                 });
             }
 
+            let dialogTitle = categoryKey === 'all_items' ? 'Todos los Ítems' : CATEGORY_MAP[categoryKey];
             modal.innerHTML = `
                 <div class="modal-content category-modal">
                     <div class="modal-header">
-                        <h2 class="modal-title">${CATEGORY_MAP[categoryKey]}</h2>
+                        <h2 class="modal-title">${dialogTitle}</h2>
                         <button class="modal-close" id="close-category-dialog">&times;</button>
                     </div>
                     <div class="modal-body">
@@ -1000,7 +1013,6 @@
             if (typeof amount === 'string') amount = parseInt(amount);
             if (isNaN(amount)) return amount;
             return amount.toLocaleString('es-ES');
-        }
         }
         
         function createItemCard(item, category) {
