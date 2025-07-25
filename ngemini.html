@@ -13,7 +13,8 @@
         }
         /* Buscador en el modal de categoría */
         .category-search-box {
-            width: 100%;
+            width: 94%;
+            margin-left: 3%;
             margin-bottom: 1rem;
             padding: 0.5rem 1rem;
             border-radius: 20px;
@@ -500,6 +501,62 @@
         modal.className = 'modal-overlay visible';
         modal.style.zIndex = '2000';
 
+        // Función para renderizar la lista filtrada
+        function renderWeatherList(filter = '') {
+            const listContainer = modal.querySelector('#weather-fav-list');
+            let filtered = allWeathers;
+            if (filter) {
+                const f = filter.trim().toLowerCase();
+                filtered = allWeathers.filter(w => w.weather_name.toLowerCase().includes(f));
+            }
+            if (filtered.length === 0) {
+                listContainer.innerHTML = '<p>No hay climas disponibles.</p>';
+            } else {
+                listContainer.innerHTML = filtered.map(w => {
+                    const isActive = state.weatherFavs && state.weatherFavs.includes(w.weather_name);
+                    const minutes = Math.floor(w.duration / 60);
+                    const seconds = String(w.duration % 60).padStart(2, '0');
+                    return `
+                        <button class="toggle-weather-fav-btn"
+                            data-weather="${w.weather_name}"
+                            style="
+                                display: flex;
+                                align-items: center;
+                                gap: 0.5rem;
+                                padding: 0.6rem 1rem;
+                                border-radius: 18px;
+                                font-weight: 600;
+                                background: ${isActive ? 'var(--success-color)' : 'var(--accent-color)'};
+                                color: white;
+                                border: none;
+                                cursor: pointer;
+                                min-width: 250px;
+                            ">
+                            <img src="${w.icon}" alt="${w.weather_name}" style="width: 24px; height: 24px;" />
+                            <span class="weather-name" style="flex: 1;">${isActive ? '✓ ' : ''}${w.weather_name}</span>
+                            <span style="font-size: 0.9em; opacity: 0.8;">${minutes}:${seconds}</span>
+                        </button>
+                    `;
+                }).join('');
+            }
+            // Reasignar listeners
+            listContainer.querySelectorAll('.toggle-weather-fav-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const w = btn.dataset.weather;
+                    const idx = state.weatherFavs.indexOf(w);
+                    const isNowActive = idx === -1;
+                    if (isNowActive) state.weatherFavs.push(w);
+                    else state.weatherFavs.splice(idx, 1);
+                    saveStateToLocalStorage();
+                    btn.style.background = isNowActive ? 'var(--success-color)' : 'var(--accent-color)';
+                    const nameSpan = btn.querySelector('.weather-name');
+                    if (nameSpan) {
+                        nameSpan.textContent = (isNowActive ? '✓ ' : '') + w;
+                    }
+                });
+            });
+        }
+
         modal.innerHTML = `
             <div class="modal-content category-modal">
                 <div class="modal-header">
@@ -507,67 +564,23 @@
                     <button class="modal-close" id="close-weather-dialog">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
-                        ${allWeathers.length === 0
-                            ? '<p>No hay climas disponibles.</p>'
-                            : allWeathers.map(w => {
-                                const isActive = state.weatherFavs && state.weatherFavs.includes(w.weather_name);
-                                const minutes = Math.floor(w.duration / 60);
-                                const seconds = String(w.duration % 60).padStart(2, '0');
-                                return `
-                                    <button class="toggle-weather-fav-btn"
-                                        data-weather="${w.weather_name}"
-                                        style="
-                                            display: flex;
-                                            align-items: center;
-                                            gap: 0.5rem;
-                                            padding: 0.6rem 1rem;
-                                            border-radius: 18px;
-                                            font-weight: 600;
-                                            background: ${isActive ? 'var(--success-color)' : 'var(--accent-color)'};
-                                            color: white;
-                                            border: none;
-                                            cursor: pointer;
-                                            min-width: 250px;
-                                        ">
-                                        <img src="${w.icon}" alt="${w.weather_name}" style="width: 24px; height: 24px;" />
-                                        <span class="weather-name" style="flex: 1;">${isActive ? '✓ ' : ''}${w.weather_name}</span>
-                                        <span style="font-size: 0.9em; opacity: 0.8;">${minutes}:${seconds}</span>
-                                    </button>
-                                `;
-                            }).join('')
-                        }
-                    </div>
+                    <input type="text" id="weather-fav-search" class="category-search-box" placeholder="Buscar clima...">
+                    <div id="weather-fav-list" style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;"></div>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
 
+        // Render inicial
+        renderWeatherList();
+
         // Cerrar modal
         modal.querySelector('#close-weather-dialog').addEventListener('click', () => modal.remove());
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
 
-        // Toggle favoritos sin destruir estructura del botón
-        modal.querySelectorAll('.toggle-weather-fav-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const w = btn.dataset.weather;
-                const idx = state.weatherFavs.indexOf(w);
-                const isNowActive = idx === -1;
-
-                if (isNowActive) state.weatherFavs.push(w);
-                else state.weatherFavs.splice(idx, 1);
-
-                saveStateToLocalStorage();
-
-                // Actualizar color de fondo
-                btn.style.background = isNowActive ? 'var(--success-color)' : 'var(--accent-color)';
-
-                // Actualizar solo el texto del span.weather-name
-                const nameSpan = btn.querySelector('.weather-name');
-                if (nameSpan) {
-                    nameSpan.textContent = (isNowActive ? '✓ ' : '') + w;
-                }
-            });
+        // Buscador dinámico
+        modal.querySelector('#weather-fav-search').addEventListener('input', (e) => {
+            renderWeatherList(e.target.value);
         });
     }
 
@@ -895,10 +908,50 @@
                 if (priceB === 0) return -1;
                 return priceA - priceB;
             });
-            // Crear el modal
             let modal = document.createElement('div');
             modal.className = 'modal-overlay visible';
             modal.style.zIndex = '2000';
+
+            // Función para renderizar la lista filtrada
+            function renderCategoryList(filter = '') {
+                const listContainer = modal.querySelector('#category-items-list');
+                let filtered = items;
+                if (filter) {
+                    const f = filter.trim().toLowerCase();
+                    filtered = items.filter(i => i.display_name.toLowerCase().includes(f));
+                }
+                listContainer.innerHTML = filtered.map(item => {
+                    const isActive = state.alerts.some(a => a.id === item.item_id);
+                    return `
+                        <div style="width:180px;background:var(--bg-primary);border-radius:var(--border-radius);border:1px solid var(--border-color);padding:1rem;display:flex;flex-direction:column;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
+                            <img src="${item.icon}" alt="${item.display_name}" style="width:48px;height:48px;object-fit:contain;margin-bottom:0.5rem;">
+                            <div style="font-weight:600;text-align:center;">${item.display_name}</div>
+                            <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:0.5rem;">${item.rarity || ''}</div>
+                            <div style="font-size:0.95rem;margin-bottom:0.5rem;">${item.price && item.price !== '0' ? formatMoney(item.price) + ' ' + item.currency : 'Sin precio'}</div>
+                            <button class="toggle-alert-category-btn" data-item-id="${item.item_id}" style="width:100%;padding:0.4rem;border-radius:6px;font-weight:600;background:${isActive ? 'var(--success-color)' : 'var(--accent-color)'};color:white;border:none;cursor:pointer;">${isActive ? '✓ Alerta Activa' : '+ Activar Alerta'}</button>
+                        </div>
+                    `;
+                }).join('');
+                // Reasignar listeners
+                listContainer.querySelectorAll('.toggle-alert-category-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const itemId = btn.dataset.itemId;
+                        const item = items.find(i => i.item_id === itemId);
+                        if (!item) return;
+                        const idx = state.alerts.findIndex(a => a.id === itemId);
+                        if (idx > -1) {
+                            state.alerts.splice(idx, 1);
+                        } else {
+                            state.alerts.push({ id: item.item_id, name: item.display_name, icon: item.icon });
+                        }
+                        saveStateToLocalStorage();
+                        renderAlertList();
+                        btn.textContent = idx > -1 ? '+ Activar Alerta' : '✓ Alerta Activa';
+                        btn.style.background = idx > -1 ? 'var(--accent-color)' : 'var(--success-color)';
+                    });
+                });
+            }
+
             modal.innerHTML = `
                 <div class="modal-content category-modal">
                     <div class="modal-header">
@@ -906,25 +959,17 @@
                         <button class="modal-close" id="close-category-dialog">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <div style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;">
-                            ${items.map(item => {
-                                const isActive = state.alerts.some(a => a.id === item.item_id);
-                                return `
-                                <div style="width:180px;background:var(--bg-primary);border-radius:var(--border-radius);border:1px solid var(--border-color);padding:1rem;display:flex;flex-direction:column;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.05);">
-                                    <img src="${item.icon}" alt="${item.display_name}" style="width:48px;height:48px;object-fit:contain;margin-bottom:0.5rem;">
-                                    <div style="font-weight:600;text-align:center;">${item.display_name}</div>
-                                    <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:0.5rem;">${item.rarity || ''}</div>
-                                    <div style="font-size:0.95rem;margin-bottom:0.5rem;">${item.price && item.price !== '0' ? formatMoney(item.price) + ' ' + item.currency : 'Sin precio'}</div>
-                                    <button class="toggle-alert-category-btn" data-item-id="${item.item_id}" style="width:100%;padding:0.4rem;border-radius:6px;font-weight:600;background:${isActive ? 'var(--success-color)' : 'var(--accent-color)'};color:white;border:none;cursor:pointer;">${isActive ? '✓ Alerta Activa' : '+ Activar Alerta'}</button>
-                                </div>
-                                `;
-                            }).join('')}
-                        </div>
+                        <input type="text" id="category-items-search" class="category-search-box" placeholder="Buscar ítem...">
+                        <div id="category-items-list" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;"></div>
                     </div>
                 </div>
             `;
             document.body.appendChild(modal);
             dom.categoryDialog = modal;
+
+            // Render inicial
+            renderCategoryList();
+
             // Cerrar modal
             modal.querySelector('#close-category-dialog').addEventListener('click', () => {
                 modal.remove();
@@ -936,24 +981,10 @@
                     dom.categoryDialog = null;
                 }
             });
-            // Activar/desactivar alerta
-            modal.querySelectorAll('.toggle-alert-category-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const itemId = btn.dataset.itemId;
-                    const item = items.find(i => i.item_id === itemId);
-                    if (!item) return;
-                    const idx = state.alerts.findIndex(a => a.id === itemId);
-                    if (idx > -1) {
-                        state.alerts.splice(idx, 1);
-                    } else {
-                        state.alerts.push({ id: item.item_id, name: item.display_name, icon: item.icon });
-                    }
-                    saveStateToLocalStorage();
-                    renderAlertList();
-                    // Actualizar botón
-                    btn.textContent = idx > -1 ? '+ Activar Alerta' : '✓ Alerta Activa';
-                    btn.style.background = idx > -1 ? 'var(--accent-color)' : 'var(--success-color)';
-                });
+
+            // Buscador dinámico
+            modal.querySelector('#category-items-search').addEventListener('input', (e) => {
+                renderCategoryList(e.target.value);
             });
         }
         // Formatear dinero con puntos
