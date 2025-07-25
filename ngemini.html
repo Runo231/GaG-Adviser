@@ -1026,9 +1026,9 @@
                         <h2 class="modal-title">${dialogTitle}</h2>
                         <button class="modal-close" id="close-category-dialog">&times;</button>
                     </div>
-                    <div class="modal-body">
-                        <input type="text" id="category-items-search" class="category-search-box" placeholder="Buscar ítem...">
-                        <div id="category-items-list" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;"></div>
+                    <div class="modal-body" style="display:flex;flex-direction:column;gap:0.5rem;">
+                        <input type="text" id="category-items-search" class="category-search-box" placeholder="Buscar ítem..." style="margin-bottom:0.5rem;position:sticky;top:0;z-index:2;">
+                        <div id="category-items-list" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;overflow-y:auto;"></div>
                     </div>
                 </div>
             `;
