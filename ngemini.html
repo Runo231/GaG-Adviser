@@ -486,6 +486,14 @@
                     </div>
                 </div>
                 <div class="settings-group">
+                    <h3>Añadir alerta por nombre</h3>
+                    <form id="manual-alert-form" style="display:flex;gap:0.5rem;align-items:center;margin-bottom:1rem;">
+                        <input type="text" id="manual-alert-input" class="category-search-box" placeholder="Nombre del ítem..." style="flex:1; width: 100%; margin: 0.5rem 0 0 0" autocomplete="off">
+                        <button type="submit" class="category-items-btn" style="padding:0.4rem 1.2rem;">Añadir</button>
+                    </form>
+                    <div id="manual-alert-error" style="color:var(--error-color);font-size:0.95em;"></div>
+                </div>
+                <div class="settings-group">
                     <h3>Volumen</h3>
                     <div class="volume-control">
                         <span>🔇</span>
@@ -640,6 +648,23 @@
                 if (!response.ok) throw new Error('No se pudo obtener la lista de ítems.');
                 const items = await response.json();
                 state.allItems = items;
+                // Actualizar alertas manuales si hay coincidencia por nombre (ignorando mayúsculas y espacios)
+                const norm = n => (n||'').toLowerCase().replace(/\s+/g, '');
+                let changed = false;
+                state.alerts = state.alerts.map(alert => {
+                    if (!alert.id && alert.name) {
+                        const found = items.find(i => norm(i.display_name) === norm(alert.name));
+                        if (found) {
+                            changed = true;
+                            return { id: found.item_id, name: found.display_name, icon: found.icon };
+                        }
+                    }
+                    return alert;
+                });
+                if (changed) {
+                    saveStateToLocalStorage();
+                    renderAlertList();
+                }
             } catch (e) {
                 console.error('Error al obtener ítems:', e);
                 state.allItems = [];
@@ -683,6 +708,23 @@
          * Carga el estado desde localStorage y configura los listeners iniciales.
          */
         function initializeApp() {
+            // Listener para añadir alerta manual
+            const manualAlertForm = document.getElementById('manual-alert-form');
+            const manualAlertInput = document.getElementById('manual-alert-input');
+            const manualAlertError = document.getElementById('manual-alert-error');
+            if (manualAlertForm) {
+                manualAlertForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const name = manualAlertInput.value.trim();
+                    if (!name) {
+                        manualAlertError.textContent = 'Introduce un nombre de ítem.';
+                        return;
+                    }
+                    manualAlertError.textContent = '';
+                    addManualNameAlert(name);
+                    manualAlertInput.value = '';
+                });
+            }
             // Minimizar sección de alertas si corresponde
             setAlertConfigMinimized(getAlertConfigMinimized());
             // Listener para minimizar/expandir sección de alertas (solo sobre el header o el título)
@@ -758,7 +800,11 @@
             state.weatherFavs = JSON.parse(localStorage.getItem('weatherFavs') || '[]');
             state.theme = localStorage.getItem('theme') || 'light';
             state.volume = parseFloat(localStorage.getItem('volume')) || 0.5;
-            state.alerts = JSON.parse(localStorage.getItem('alerts')) || [];
+            // Permitir alertas antiguas y nuevas (con o sin id)
+            try {
+                const alerts = JSON.parse(localStorage.getItem('alerts')) || [];
+                state.alerts = Array.isArray(alerts) ? alerts : [];
+            } catch { state.alerts = []; }
             state.travelingMerchantAlert = localStorage.getItem('travelingMerchantAlert') === 'true';
             state.notifiedItems = JSON.parse(localStorage.getItem('notifiedItems')) || [];
         }
@@ -1101,6 +1147,15 @@
             startAllCountdowns();
         }
         
+        function addManualNameAlert(name) {
+            // No duplicar (ignorando mayúsculas y espacios)
+            const norm = n => n.toLowerCase().replace(/\s+/g, '');
+            if (state.alerts.some(a => norm(a.name||a.id||'') === norm(name))) return;
+            state.alerts.push({ name: name, id: null, icon: null });
+            saveStateToLocalStorage();
+            renderAlertList();
+        }
+
         function addManualAlert(item) {
             if (state.alerts.some(a => a.id === item.item_id)) return;
             state.alerts.push({ id: item.item_id, name: item.display_name, icon: item.icon });
@@ -1205,18 +1260,41 @@
 
             let shouldPlaySound = false;
 
-            // 1. Chequear ítems en alerta
-            state.alerts.forEach(alert => {
-                const item = currentItems[alert.id];
-                if (item) {
+            // 1. Chequear ítems en alerta (por id o por nombre normalizado)
+            const norm = n => (n||'').toLowerCase().replace(/\s+/g, '');
+            state.alerts.forEach((alert, idx) => {
+                let foundId = alert.id;
+                let foundName = alert.name;
+                let foundIcon = alert.icon;
+                let item = null;
+                if (alert.id && currentItems[alert.id]) {
+                    item = currentItems[alert.id];
+                } else if (!alert.id && alert.name) {
+                    // Buscar por nombre normalizado en currentItems
+                    for (const itemId in currentItems) {
+                        if (norm(currentItems[itemId].name) === norm(alert.name)) {
+                            item = currentItems[itemId];
+                            foundId = itemId;
+                            foundName = currentItems[itemId].name;
+                            // Buscar icono en allItems
+                            const found = state.allItems.find(i => i.item_id === itemId);
+                            foundIcon = found ? found.icon : null;
+                            // Actualizar alerta a formato completo
+                            state.alerts[idx] = { id: foundId, name: foundName, icon: foundIcon };
+                            saveStateToLocalStorage();
+                            break;
+                        }
+                    }
+                }
+                if (item && foundId) {
                     // Verificar si ya se notificó para este rango
-                    const alreadyNotified = state.notifiedItems.some(n => n.id === alert.id && n.start === item.start && n.end === item.end);
+                    const alreadyNotified = state.notifiedItems.some(n => n.id === foundId && n.start === item.start && n.end === item.end);
                     if (!alreadyNotified) {
-                        console.log(`ALERTA: ¡${item.name} está disponible!`);
-                        state.notifiedItems.push({ id: alert.id, start: item.start, end: item.end });
+                        console.log(`ALERTA: ¡${foundName} está disponible!`);
+                        state.notifiedItems.push({ id: foundId, start: item.start, end: item.end });
                         cleanNotifiedItems();
                         shouldPlaySound = true;
-                        justAlertedItemIds.push(alert.id);
+                        justAlertedItemIds.push(foundId);
                     }
                 }
             });
