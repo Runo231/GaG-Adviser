@@ -387,6 +387,14 @@
             border-radius: var(--border-radius);
             margin: 1rem 1.5rem;
         }
+
+        /* Icono wiki: color dinámico según tema */
+        #open-wiki-btn svg {
+            stroke: #111;
+        }
+        body.dark-theme #open-wiki-btn svg {
+            stroke: #fff;
+        }
         
         @media (max-width: 768px) {
             .header {
@@ -1310,7 +1318,7 @@
 
         async function showItemInfoModal(itemId) {
             dom.modal.classList.add('visible');
-            dom.modalTitle.textContent = 'Cargando...';
+            dom.modalTitle.innerHTML = 'Cargando...';
             dom.modalBody.innerHTML = '<p>Obteniendo detalles del ítem...</p>';
 
             try {
@@ -1324,14 +1332,35 @@
                     itemInfo = await response.json();
                     state.itemInfoCache.set(itemId, itemInfo);
                 }
-                
-                dom.modalTitle.textContent = itemInfo.display_name;
+
+                // Imagen a la izquierda, nombre y botón wiki a la derecha
+                const wikiName = encodeURIComponent((itemInfo.display_name || '').replace(/ /g, '_'));
+                const wikiUrl = `https://growagarden.fandom.com/wiki/${wikiName}`;
+                const iconWiki = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+
+                dom.modalTitle.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:1rem;">
+                        ${itemInfo.icon ? `<img src="${itemInfo.icon}" alt="${itemInfo.display_name}" style="width:48px;height:48px;object-fit:contain;">` : ''}
+                        <span style="font-size:1.2em;font-weight:600;">${itemInfo.display_name}</span>
+                        <button id="open-wiki-btn" title="Abrir Wiki" style="background:none;border:none;cursor:pointer;padding:0;margin-left:0.5rem;display:flex;align-items:center;">${iconWiki}</button>
+                    </div>
+                `;
                 dom.modalBody.innerHTML = `
                     <p>${itemInfo.description || 'Sin descripción.'}</p>
                     <p><strong>Rareza:</strong> ${itemInfo.rarity || 'N/A'}</p>
                     <p><strong>Precio de venta:</strong> ${itemInfo.price ? `${formatMoney(itemInfo.price)} ${itemInfo.currency}` : 'N/A'}</p>
                     <p><strong>Visto por última vez:</strong> ${itemInfo.last_seen ? new Date(itemInfo.last_seen).toLocaleString() : 'N/A'}</p>
                 `;
+                // Listener para abrir la wiki en nueva pestaña
+                setTimeout(() => {
+                    const btn = document.getElementById('open-wiki-btn');
+                    if (btn) {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            window.open(wikiUrl, '_blank');
+                        });
+                    }
+                }, 0);
 
             } catch (error) {
                 console.error("Error al mostrar info del ítem:", error);
