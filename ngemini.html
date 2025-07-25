@@ -791,7 +791,7 @@
 
                 updateStatus(true);
 
-                const justAlertedItemIds = checkForAlerts(stockData);
+                const justAlertedItemIds = checkForAlerts(stockData, weatherData);
                 state.lastStockData = stockData;
 
                 renderStock(stockData, justAlertedItemIds);
@@ -1072,11 +1072,13 @@
         }
         
         function checkForAlerts(newStockData) {
+            // Ahora acepta weatherData como segundo argumento
+            const weatherData = arguments[1];
             const justAlertedItemIds = [];
-            // 0. Chequear climas favoritos
+            // 0. Chequear climas favoritos usando weatherData
             let shouldPlayWeatherSound = false;
-            if (state.weatherFavs && Array.isArray(state.weatherFavs)) {
-                const activeWeathers = newStockData.weather?.filter(w => w.active) || [];
+            if (state.weatherFavs && Array.isArray(state.weatherFavs) && weatherData && Array.isArray(weatherData.weather)) {
+                const activeWeathers = weatherData.weather.filter(w => w.active);
                 activeWeathers.forEach(weather => {
                     if (state.weatherFavs.includes(weather.weather_name)) {
                         shouldPlayWeatherSound = true;
